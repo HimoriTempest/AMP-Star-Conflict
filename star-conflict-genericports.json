@@ -1,0 +1,37 @@
+[
+    {
+        "Protocol": "TCP",
+        "Port": 3801,
+        "Ref": "LoadBalancerPort",
+        "Name": "Load Balancer Port",
+        "Description": "Primary game routing port — game clients connect here"
+    },
+    {
+        "Protocol": "TCP",
+        "Port": 3802,
+        "Ref": "ShardPort",
+        "Name": "Shard Port",
+        "Description": "Game shard / match session port"
+    },
+    {
+        "Protocol": "TCP",
+        "Port": 3815,
+        "Ref": "ChatPort",
+        "Name": "Chat Server Port",
+        "Description": "In-game chat service port"
+    },
+    {
+        "Protocol": "TCP",
+        "Port": 3850,
+        "Ref": "HubPort",
+        "Name": "Hub Management Port",
+        "Description": "Internal hub orchestration port — keep behind firewall unless needed remotely"
+    },
+    {
+        "Protocol": "TCP",
+        "Port": 2222,
+        "Ref": "SSHAdminPort",
+        "Name": "SSH Admin Port",
+        "Description": "Server-side SSH admin access (set via ssh_port in dediserver.cfg)"
+    }
+]
