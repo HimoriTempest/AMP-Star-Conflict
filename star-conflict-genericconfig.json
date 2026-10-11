@@ -1,113 +1,74 @@
 [
     {
-        "Name": "Network",
-        "DisplayName": "Network",
-        "Description": "Service listen ports — must match the values forwarded on your router/firewall",
-        "Icon": "ethernet",
-        "Colour": "#3B82F6",
-        "Fields": [
-            {
-                "FieldName": "lb_listenTo",
-                "ReadableName": "Load Balancer Port",
-                "Description": "TCP port that game clients connect to. Change this if 3801 conflicts with another service.",
-                "Category": "Network",
-                "NodeRef": "Daemon:GenericModule.App.Settings.lb_listenTo",
-                "InputType": "Number",
-                "ValType": "Int",
-                "DefaultValue": "3801",
-                "MinValue": 1024,
-                "MaxValue": 65535,
-                "Keywords": "port loadbalancer game client",
-                "Order": 1
-            },
-            {
-                "FieldName": "shard_listenTo",
-                "ReadableName": "Shard Port",
-                "Description": "TCP port for the game shard / match session service.",
-                "Category": "Network",
-                "NodeRef": "Daemon:GenericModule.App.Settings.shard_listenTo",
-                "InputType": "Number",
-                "ValType": "Int",
-                "DefaultValue": "3802",
-                "MinValue": 1024,
-                "MaxValue": 65535,
-                "Keywords": "port shard match",
-                "Order": 2
-            },
-            {
-                "FieldName": "chat_server_port",
-                "ReadableName": "Chat Server Port",
-                "Description": "TCP port for in-game chat.",
-                "Category": "Network",
-                "NodeRef": "Daemon:GenericModule.App.Settings.chat_server_port",
-                "InputType": "Number",
-                "ValType": "Int",
-                "DefaultValue": "3815",
-                "MinValue": 1024,
-                "MaxValue": 65535,
-                "Keywords": "port chat",
-                "Order": 3
-            },
-            {
-                "FieldName": "hub_listenTo",
-                "ReadableName": "Hub Management Port",
-                "Description": "TCP port for the Hub orchestration service. Keep this behind a firewall.",
-                "Category": "Network",
-                "NodeRef": "Daemon:GenericModule.App.Settings.hub_listenTo",
-                "InputType": "Number",
-                "ValType": "Int",
-                "DefaultValue": "3850",
-                "MinValue": 1024,
-                "MaxValue": 65535,
-                "Keywords": "port hub internal",
-                "Order": 4
-            }
-        ]
+        "DisplayName": "Load Balancer Port",
+        "Category": "Star Conflict:stadia_controller",
+        "Subcategory": "Network:dns:1",
+        "Description": "TCP port game clients connect to. Must be forwarded on your router/firewall.",
+        "Keywords": "port loadbalancer game client network",
+        "FieldName": "lb_listenTo",
+        "InputType": "number",
+        "ParamFieldName": "lb_listenTo",
+        "DefaultValue": "3801",
+        "EnumValues": {}
     },
     {
-        "Name": "Performance",
-        "DisplayName": "Performance",
-        "Description": "Server tick rate and resource settings",
-        "Icon": "cpu",
-        "Colour": "#10B981",
-        "Fields": [
-            {
-                "FieldName": "cl_maxFps",
-                "ReadableName": "Server FPS Cap",
-                "Description": "Maximum server-side frames per second. The dediserver.cfg default is 32 (multiple of sv_updateRate 15). Raise for smoother physics; lower to reduce CPU load.",
-                "Category": "Performance",
-                "NodeRef": "Daemon:GenericModule.App.Settings.cl_maxFps",
-                "InputType": "Number",
-                "ValType": "Int",
-                "DefaultValue": "32",
-                "MinValue": 15,
-                "MaxValue": 128,
-                "Keywords": "fps tick rate performance",
-                "Order": 1
-            }
-        ]
+        "DisplayName": "Shard Port",
+        "Category": "Star Conflict:stadia_controller",
+        "Subcategory": "Network:dns:1",
+        "Description": "TCP port for the game shard / match session service. Must be forwarded.",
+        "Keywords": "port shard match network",
+        "FieldName": "shard_listenTo",
+        "InputType": "number",
+        "ParamFieldName": "shard_listenTo",
+        "DefaultValue": "3802",
+        "EnumValues": {}
     },
     {
-        "Name": "Admin",
-        "DisplayName": "Administration",
-        "Description": "Admin access and debug settings",
-        "Icon": "terminal",
-        "Colour": "#F59E0B",
-        "Fields": [
-            {
-                "FieldName": "ssh_port",
-                "ReadableName": "SSH Admin Port",
-                "Description": "TCP port for server-side SSH administrative access.",
-                "Category": "Admin",
-                "NodeRef": "Daemon:GenericModule.App.Settings.ssh_port",
-                "InputType": "Number",
-                "ValType": "Int",
-                "DefaultValue": "2222",
-                "MinValue": 1024,
-                "MaxValue": 65535,
-                "Keywords": "ssh admin port",
-                "Order": 1
-            }
-        ]
+        "DisplayName": "Chat Server Port",
+        "Category": "Star Conflict:stadia_controller",
+        "Subcategory": "Network:dns:1",
+        "Description": "TCP port for in-game chat. Must be forwarded.",
+        "Keywords": "port chat network",
+        "FieldName": "chat_server_port",
+        "InputType": "number",
+        "ParamFieldName": "chat_server_port",
+        "DefaultValue": "3815",
+        "EnumValues": {}
+    },
+    {
+        "DisplayName": "Hub Management Port",
+        "Category": "Star Conflict:stadia_controller",
+        "Subcategory": "Network:dns:1",
+        "Description": "TCP port for the Hub orchestration service. Keep behind firewall — not needed by clients.",
+        "Keywords": "port hub internal network",
+        "FieldName": "hub_listenTo",
+        "InputType": "number",
+        "ParamFieldName": "hub_listenTo",
+        "DefaultValue": "3850",
+        "EnumValues": {}
+    },
+    {
+        "DisplayName": "Server FPS Cap",
+        "Category": "Star Conflict:stadia_controller",
+        "Subcategory": "Performance:speed:2",
+        "Description": "Maximum server-side frames per second. Default 32 is a multiple of sv_updateRate=15.",
+        "Keywords": "fps tick rate performance",
+        "FieldName": "cl_maxFps",
+        "InputType": "number",
+        "ParamFieldName": "cl_maxFps",
+        "DefaultValue": "32",
+        "EnumValues": {}
+    },
+    {
+        "DisplayName": "SSH Admin Port",
+        "Category": "Star Conflict:stadia_controller",
+        "Subcategory": "Administration:terminal:3",
+        "Description": "TCP port for server-side SSH administrative access.",
+        "Keywords": "ssh admin port",
+        "FieldName": "ssh_port",
+        "InputType": "number",
+        "ParamFieldName": "ssh_port",
+        "DefaultValue": "2222",
+        "EnumValues": {}
     }
 ]
