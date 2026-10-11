@@ -3,7 +3,7 @@
         "UpdateStageName": "Star Conflict Server Download",
         "UpdateSourcePlatform": "All",
         "UpdateSource": "FetchURL",
-        "UpdateSourceData": "REPLACE_WITH_YOUR_ARCHIVE_URL",
+        "UpdateSourceData": "https://git.himori.dev/Himori/Star-Conflict-Server/src/branch/main/star-conflict-server.tar.gz",
         "UpdateSourceTarget": "{{$FullBaseDir}}",
         "UpdateSourceArgs": "star-conflict-server.tar.gz",
         "UnzipUpdateSource": true,

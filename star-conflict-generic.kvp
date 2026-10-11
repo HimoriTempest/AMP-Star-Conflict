@@ -27,7 +27,6 @@ Meta.BreakingReleaseNotes=
 Meta.AppConfigId=5513ebf8-03d6-46e0-a243-803b35d6e79f
 Meta.ImportableExtensions=[]
 Meta.AppIsMultiIPAware=False
-
 App.DisplayName=Star Conflict
 App.RootDir=./star-conflict/
 App.BaseDirectory=./star-conflict/212070/
@@ -89,7 +88,6 @@ App.MonitorDirectChildOnly=False
 App.SupportsUniversalSleep=False
 App.WakeupMode=Any
 App.ApplicationReadyMode=RegexMatch
-
 Console.FilterMatchRegex=
 Console.FilterMatchReplacement=
 Console.ThrowawayMessageRegex=
@@ -102,7 +100,6 @@ Console.MetricsRegex=
 Console.SuppressLogAtStart=False
 Console.ActivateLogRegex=
 Console.UserActions={}
-
 Limits.SleepMode=False
 Limits.SleepOnStart=False
 Limits.SleepDelayMinutes=5
