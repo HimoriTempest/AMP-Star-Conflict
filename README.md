@@ -87,11 +87,11 @@ Every option is reversible. The default is the game's original value, and settin
 | AFK Kick Time (seconds) | `sv_afkCheckDuration` (battle servers) | 120 | Battles |
 | Open Space Resurrection Cost | `sv_resurrectionCreditsPrice` (open space) | 100000 | Open space |
 | Max Players (AMP's own player limit, `$MaxUsers`) | `lb_limitPlayersOnShardTo` (load balancer). The server has one shard, so this is the server-wide limit. | 800 | Logins |
-| Bots In Arena Matches | `cvars.mm_botsCount` line in the same file, edited in place (23 fills a 24-player arena) | 6 | Matchmaking |
-| Kick Excessive Bots | `cvars.sv_kickExcessiveBotsEnabled` line, edited in place | 1 | Battles |
+| Bots In Arena Matches | `cvars.mm_botsCount` line, plus `botsCount` in both arena queue templates (`special = { arcade = 1 }` becomes `special = { arcade = 1, botsCount = N }`), edited in place like SCPatcher. 23 fills a 24-player arena. Needs Kick Excessive Bots **off** to have any effect with few players. | 6 | Matchmaking |
+| Kick Excessive Bots | `cvars.sv_kickExcessiveBotsEnabled` line, edited in place. When on, battles drop bots until there are no more bots than players, so a solo player always gets a 1v1. | 1 | Battles |
 | Buy Everything | `cvars.store_allowAllItemsForBying` line, edited in place. Buying obsolete or dev items can break an account. | 0 | Store |
 | Starter Pack: Credits / Galactic Standards / Token Credits | `credits` / `goldCredits` / `tokenCredits` attributes in `cloud/data/starter_pack.xml`, on top of the starting values above | 0 / 0 / 0 | Accounts created afterwards |
-| Battle Pass / Battle Pass Start / Battle Pass End | In place: `local battlePassStart`, `local battlePassEndTable` (one stage) at the top of the file, and `cvars.store_battlePassUnlockLvlBtnStart`. Off writes back the original, expired 2023 values. Dates are `YYYY-MM-DDThh:mm:ssZ`; an invalid date leaves the battle pass off and logs why. | off | Shard and QuestServer, from the next start |
+| Battle Pass / Battle Pass Start / Battle Pass End | In place: `local battlePassStart`, `local battlePassEndTable` (one stage) at the top of the file, and `cvars.store_battlePassUnlockLvlBtnStart`. Off writes back the original, expired 2023 values. Dates are taken as UTC in any common format (AMP itself stores them as `10/13/2026 00:00:00`) and converted to the game's `YYYY-MM-DDThh:mm:ssZ`. An unparseable date leaves the battle pass off and logs why. In 1.5.0/1.5.1 only the ISO format was accepted, so dates entered through AMP were always rejected. | off | Shard and QuestServer, from the next start |
 
 Starting values and the starter pack are only granted when an account is created. Changing them does not touch existing balances.
 
