@@ -99,11 +99,20 @@
         "SkipOnFailure": false
     },
     {
+        "UpdateStageName": "Write MongoDB Start Script",
+        "UpdateSourcePlatform": "Linux",
+        "UpdateSource": "CreateFile",
+        "UpdateSourceArgs": "{{$FullRootDir}}mongo-start.sh",
+        "UpdateSourceData": "#!/bin/bash\n# Managed by AMP - regenerated on every start.\n# Starts MongoDB under a freshly started Wine server, so nothing from the previous run\n# (stray services, sockets they left open) survives into the new one.\nexport WINEPREFIX='{{$FullRootDir}}.wine' WINEARCH=win64 WINEDEBUG=-all WINEDLLOVERRIDES='mscoree,mshtml='\nWINESERVER=\"$(dirname \"$(readlink -f /usr/bin/wine)\")/wineserver\"\nport_open() { (exec 3<>/dev/tcp/127.0.0.1/27017) 2>/dev/null; }\ncd '{{$FullBaseDir}}cloud/mongodb' || exit 1\nif port_open; then\n  echo 'Stopping MongoDB from the previous run'\n  /usr/bin/wine mongo.exe --quiet --eval \"db.getSiblingDB('admin').shutdownServer()\" >/dev/null 2>&1\n  for i in $(seq 1 30); do port_open || break; sleep 1; done\nfi\necho 'Restarting the Wine server'\n\"$WINESERVER\" -k 2>/dev/null\n\"$WINESERVER\" -w 2>/dev/null\nmkdir -p '{{$FullRootDir}}mongo-data'\nexec /usr/bin/wine mongod.exe --dbpath 'Z:{{$FullRootDir}}mongo-data' --bind_ip 127.0.0.1 --port 27017 --smallfiles --logpath 'Z:{{$FullRootDir}}mongo-data/mongod.log' --logappend\n",
+        "OverwriteExistingFiles": true,
+        "SkipOnFailure": false
+    },
+    {
         "UpdateStageName": "Run MongoDB",
         "UpdateSourcePlatform": "Linux",
         "UpdateSource": "Executable",
         "UpdateSourceData": "/bin/bash",
-        "UpdateSourceArgs": "-c \"export WINEPREFIX=\\\"{{$FullRootDir}}.wine\\\" WINEARCH=win64 WINEDEBUG=-all WINEDLLOVERRIDES=\\\"mscoree,mshtml=\\\"; (exec 3<>/dev/tcp/127.0.0.1/27017) 2>/dev/null && { echo \\\"MongoDB is already running\\\"; exit 0; }; mkdir -p \\\"{{$FullRootDir}}mongo-data\\\" && cd \\\"{{$FullBaseDir}}cloud/mongodb\\\" && exec /usr/bin/wine mongod.exe --dbpath \\\"Z:{{$FullRootDir}}mongo-data\\\" --bind_ip 127.0.0.1 --port 27017 --smallfiles --logpath \\\"Z:{{$FullRootDir}}mongo-data/mongod.log\\\" --logappend\"",
+        "UpdateSourceArgs": "\"{{$FullRootDir}}mongo-start.sh\"",
         "RunInBackground": true,
         "SkipOnFailure": false
     },

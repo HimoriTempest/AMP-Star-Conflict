@@ -34,6 +34,8 @@ All binaries are Windows-only (Hub and services are 32-bit, mongod is 64-bit). O
 
 Internal only, never forward these: Hub `3850` and MongoDB `27017` (bound to `127.0.0.1`, no auth).
 
+**Keep the ports out of Linux's ephemeral range** (`/proc/sys/net/ipv4/ip_local_port_range`, usually 32768–60999). If ADS auto-assigns ports in that range (for example 60059–60061 and 60008+), an outgoing connection can grab one first, and that service then fails with `Failed to listen on port …`. Set them back to the defaults above in the instance's port settings.
+
 ## Installing on a NixOS host
 
 The Linux side needs a 64-bit Wine with WoW64/32-bit support at `/usr/bin/wine`. That doesn't exist on NixOS, so **run the instance in a container**. In ADS, when creating the instance, enable *Use Containers* (AMP needs Docker on the host).
@@ -101,7 +103,7 @@ Not yet tested end-to-end in AMP:
 - That an empty `net_override*Addr` behaves as "no override".
 - That battle servers pick ports from `net_gamePort` upward, and whether they use TCP or UDP. Both are forwarded.
 - How the client is pointed at a remote server (`net_masterServerAddress` format and where `user_config.cfg` is read from).
-- What happens to Hub on `SIGTERM` under Wine. Child services shut themselves down when Hub disconnects. mongod keeps running between app restarts, and the next start reuses it. It only stops when the container stops.
+- Stopping works: Hub exits on `SIGTERM` and its services shut themselves down when Hub disconnects. On every start, `mongo-start.sh` cleanly stops the previous MongoDB, restarts the Wine server (`wineserver -k`) and starts MongoDB fresh. This clears services and sockets left over from the last run. A leftover socket on the chat port once stopped ChatServer from starting.
 - Which `.pak` archives the server really needs. Services load scripts such as `scripts/ai/adventure_server.lua` and `scripts/scripts_server/main.lua` from inside them (their file index is obfuscated), so the tarball ships all of `data/`. A slimmer tarball without the paks made ScriptsServer and AdventureServer fail.
 - The instance is marked Ready when Hub logs that the load balancer registered (`registered itself as 810000000000001`). If that service ID changes, AMP will stay on "Starting" while the server works fine. Adjust `Console.AppReadyRegex` if that happens. Hub ignores `-logFileName` for its location and always writes `hub_YYYY_MM_DD.log` under `.wine/drive_c/users/<user>/AppData/Local/Targem/StarConflict/cloud/Hub/logs/`. The wrapper follows that file. The other services log to the same folder.
 
