@@ -54,8 +54,8 @@ networking.firewall = {
 
 ## Adding the template to AMP
 
-1. Push this repo to GitHub (`HimoriTempest/AMP-Star-Conflict`, per `manifest.json`).
-2. In ADS go to **Configuration → Instance Deployment → Configuration Repositories** and add `HimoriTempest/AMP-Star-Conflict:main`. Then click **Fetch latest**.
+1. Push this repo to GitHub (`HimoriTempest/AMPStarConflict`, per `manifest.json`). The repository name must not contain hyphens. AMP rebuilds the template source from `<owner>-<repo>-<branch>`, and a hyphenated repo name makes upgrades fail with `source --main`.
+2. In ADS go to **Configuration → Instance Deployment → Configuration Repositories** and add `HimoriTempest/AMPStarConflict:main`. Then click **Fetch latest**.
 3. Create an instance, choose *Generic*, then *Star Conflict*, with containers enabled.
 4. Update the instance. This downloads the server tarball (about 12 GB). No Steam login is needed.
 5. Set **Public Address** to the host name or IP players will use, then start.
