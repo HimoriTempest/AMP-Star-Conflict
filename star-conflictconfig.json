@@ -137,15 +137,15 @@
         "EnumValues": {}
     },
     {
-        "DisplayName": "Bots In Arena Matches",
+        "DisplayName": "Ships In Arena Matches",
         "Category": "Star Conflict:rocket_launch",
         "Subcategory": "Matchmaking:groups:4",
-        "Description": "Number of bots the matchmaker adds to arena (PvP) matches: cvars.mm_botsCount, and botsCount in both arena queue templates' special table, as SCPatcher's 'Full arena matches' does. Vanilla 6. 23 fills a 24-player arena. Only has an effect with Kick Excessive Bots off: otherwise battles remove bots until there are no more bots than players, so a solo player ends up in a 1v1. Edits: star-conflict/server/cloud/data/default_platform_config.lua (cvars.mm_botsCount line and the two arena 'special = { arcade = 1 }' lines, edited in place).",
+        "Description": "Total number of ships in an arena (PvP) match; bots fill up to this number. Seen on this server: 6 gave the player plus 5 bots (3v3). Each queue caps it at its own size: the newbie arena queue (low matchmaking rating) holds 16 (8v8), the regular arena queues 24 (12v12). Written to cvars.mm_botsCount and to botsCount in both arena queue templates' special table. Vanilla 6. SCPatcher also turns Kick Excessive Bots off for this. Edits: star-conflict/server/cloud/data/default_platform_config.lua (cvars.mm_botsCount line and the two arena 'special = { arcade = 1 }' lines, edited in place).",
         "Keywords": "bots,arena,matchmaking,pvp,fill",
         "FieldName": "ArenaBotsCount",
         "InputType": "number",
         "MinValue": "0",
-        "MaxValue": "23",
+        "MaxValue": "24",
         "IsFlagArgument": false,
         "ParamFieldName": "ArenaBotsCount",
         "IncludeInCommandLine": false,
@@ -156,7 +156,7 @@
         "DisplayName": "Kick Excessive Bots",
         "Category": "Star Conflict:rocket_launch",
         "Subcategory": "Matchmaking:groups:4",
-        "Description": "On (vanilla): battle servers remove bots whenever there are more bots than players, so with few players online every arena match shrinks to a 1v1 no matter how many bots are configured. Turn Off to keep the configured number of bots (cvars.sv_kickExcessiveBotsEnabled). Edits: star-conflict/server/cloud/data/default_platform_config.lua (cvars.sv_kickExcessiveBotsEnabled line, edited in place).",
+        "Description": "cvars.sv_kickExcessiveBotsEnabled (vanilla On). The game's own comment: kick from the battle when there are more bots than players; the battle server removes such a bot with a special 'kick excessive bot' damage. Most likely this makes room when real players join a running match, but that is not documented. SCPatcher turns it off for full bot matches. Edits: star-conflict/server/cloud/data/default_platform_config.lua (cvars.sv_kickExcessiveBotsEnabled line, edited in place).",
         "Keywords": "bots,kick,excessive,arena",
         "FieldName": "KickExcessiveBots",
         "InputType": "enum",
@@ -400,5 +400,21 @@
         "DefaultValue": "",
         "EnumValues": {},
         "Placeholder": "2026-12-31T23:59:59Z"
+    },
+    {
+        "DisplayName": "Coop vs AI Team Size (experimental)",
+        "Category": "Star Conflict:rocket_launch",
+        "Subcategory": "Matchmaking:groups:4",
+        "Description": "0 = vanilla: the enemy team is sized to the number of players, so a solo player gets a 1v1. N (2-6) fills a solo player's coop match to NvN with N-1 allied and N enemy bots (botsCount = 2N-1, botsInTeam1 = N-1 in the coop queues' special table); with more players their team grows by one per extra player. The newbie coop queue holds at most 8 ships (4v4), the regular coop queues 12 (6v6). Experimental: it is not confirmed that the matchmaker uses these values instead of recalculating them - check botsCount/botsInTeam1 in the battle log (cloud/Hub/logs/<date>/dediserver*.log in the Wine prefix) after a match. Edits: star-conflict/server/cloud/data/default_platform_config.lua (the three 'coop_vs_ai = 1' special entries, edited in place).",
+        "Keywords": "coop,pve,ai,bots,team,size,4v4",
+        "FieldName": "CoopTeamSize",
+        "InputType": "number",
+        "MinValue": "0",
+        "MaxValue": "6",
+        "IsFlagArgument": false,
+        "ParamFieldName": "CoopTeamSize",
+        "IncludeInCommandLine": false,
+        "DefaultValue": "0",
+        "EnumValues": {}
     }
 ]
