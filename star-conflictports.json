@@ -1,0 +1,42 @@
+[
+    {
+        "Protocol": "TCP",
+        "Port": 3801,
+        "Offset": 0,
+        "Range": 1,
+        "Ref": "LoadBalancerPort",
+        "Name": "Load Balancer Port",
+        "Description": "Master server / load balancer. This is the address:port players point their client at (lb_listenTo).",
+        "ChildPorts": null
+    },
+    {
+        "Protocol": "TCP",
+        "Port": 3802,
+        "Offset": 0,
+        "Range": 1,
+        "Ref": "ShardPort",
+        "Name": "Shard Port",
+        "Description": "Shard (session/hangar) service. Clients are redirected here by the load balancer (shard_listenTo).",
+        "ChildPorts": null
+    },
+    {
+        "Protocol": "TCP",
+        "Port": 3815,
+        "Offset": 0,
+        "Range": 1,
+        "Ref": "ChatPort",
+        "Name": "Chat Port",
+        "Description": "Chat server (chat_server_port).",
+        "ChildPorts": null
+    },
+    {
+        "Protocol": "Both",
+        "Port": 35000,
+        "Offset": 0,
+        "Range": 50,
+        "Ref": "BattlePort",
+        "Name": "Battle Server Ports",
+        "Description": "Base port and range for DedicatedServer.exe battle instances spawned per match (net_gamePort). One port per concurrent battle.",
+        "ChildPorts": null
+    }
+]

@@ -1,0 +1,43 @@
+[
+    {
+        "UpdateStageName": "Server Files Download",
+        "UpdateSourcePlatform": "All",
+        "UpdateSource": "FetchURL",
+        "UpdateSourceData": "https://nx.himori.dev/public.php/dav/files/wyxJddcXopyeJDW",
+        "UpdateSourceArgs": "star-conflict-server.tar.gz",
+        "UpdateSourceTarget": "{{$FullRootDir}}",
+        "OverwriteExistingFiles": true,
+        "SkipOnFailure": false
+    },
+    {
+        "UpdateStageName": "Server Files Extract",
+        "UpdateSourcePlatform": "Linux",
+        "UpdateSource": "Executable",
+        "UpdateSourceData": "/bin/bash",
+        "UpdateSourceArgs": "-c \"mkdir -p \\\"{{$FullBaseDir}}\\\" && tar -xzf \\\"{{$FullRootDir}}star-conflict-server.tar.gz\\\" -C \\\"{{$FullBaseDir}}\\\" && rm -f \\\"{{$FullRootDir}}star-conflict-server.tar.gz\\\"\"",
+        "SkipOnFailure": false
+    },
+    {
+        "UpdateStageName": "Server Files Extract",
+        "UpdateSourcePlatform": "Windows",
+        "UpdateSource": "Executable",
+        "UpdateSourceData": "powershell.exe",
+        "UpdateSourceArgs": "-NoProfile -Command \"New-Item -ItemType Directory -Force -Path '{{$FullBaseDir}}' | Out-Null; & tar.exe -xzf '{{$FullRootDir}}star-conflict-server.tar.gz' -C '{{$FullBaseDir}}'; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; Remove-Item -Force '{{$FullRootDir}}star-conflict-server.tar.gz'\"",
+        "SkipOnFailure": false
+    },
+    {
+        "UpdateStageName": "MongoDB Data Directory Creation",
+        "UpdateSourcePlatform": "All",
+        "UpdateSource": "CreateDirectory",
+        "UpdateSourceArgs": "{{$FullRootDir}}mongo-data",
+        "SkipOnFailure": false
+    },
+    {
+        "UpdateStageName": "Initialise Wine",
+        "UpdateSourcePlatform": "Linux",
+        "UpdateSource": "Executable",
+        "UpdateSourceData": "/bin/bash",
+        "UpdateSourceArgs": "-c \"WINEPREFIX=\\\"{{$FullRootDir}}.wine\\\" WINEARCH=win64 WINEDEBUG=-all WINEDLLOVERRIDES=\\\"mscoree,mshtml=\\\" /usr/bin/wineboot --init\"",
+        "SkipOnFailure": false
+    }
+]

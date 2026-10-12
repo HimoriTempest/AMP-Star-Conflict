@@ -1,177 +1,121 @@
-# Star Conflict — AMP Generic Module Template
+# AMP Generic Module template: Star Conflict
 
-Self-host a private Star Conflict dedicated server managed through [AMP (Application Management Portal) by CubeCoders](https://cubecoders.com/AMP).
+Hosts the self-contained Star Conflict server stack in CubeCoders AMP.
 
----
+The server files come from [`star-conflict-server.tar.gz`](https://nx.himori.dev/public.php/dav/files/wyxJddcXopyeJDW). It contains `cloud/` (with the bundled MongoDB 2.6.12 in `cloud/mongodb/`), `data/gamedata/`, `data/levels/` (map/nav/scene data, no textures) and `sys_data/`. The archive is extracted to `star-conflict/server/`.
 
-## What this template does
+- `Hub.exe` is the supervisor. It reads `cloud/data/cloud.xml` and spawns about 17 services: LoadBalancer, Shard, MatchMaker, Chat, Universe, ZoneCoordinator and others.
+- `ZoneCoordinator` spawns one `DedicatedServer.exe` per battle.
+- Everything persists to MongoDB on `127.0.0.1:27017`. The services connect as soon as they start, so **MongoDB must be up before Hub starts**. The pre-start stages enforce this: they start mongod and wait until port 27017 accepts connections. If it doesn't come up within 90 seconds, the start is aborted.
 
-This folder contains **two AMP Generic Module templates** that work together:
+MongoDB data lives outside the extracted files, in `star-conflict/mongo-data/`, so it survives updates.
 
-| Template | Manages | Install first? |
-|---|---|---|
-| `star-conflict-mongodb.kvp` | MongoDB 2.6.x database | **Yes** |
-| `star-conflict-generic.kvp` | Hub.exe + all game services | Second |
+All binaries are Windows-only (Hub and services are 32-bit, mongod is 64-bit). On Linux they run under Wine inside AMP's `cubecoders/ampbase:wine-stable` container.
 
-- The MongoDB instance downloads MongoDB 2.6.12 and manages `mongod` as its own process.
-- The Star Conflict instance downloads game files via SteamCMD and runs Hub.exe (via Wine on Linux).
-- AMP's **startup dependency** system ensures MongoDB is always running before Hub.exe starts.
+## Files
 
----
-
-## Prerequisites
-
-### On every host
-
-| Requirement | Notes |
+| File | Purpose |
 |---|---|
-| AMP ≥ 2.5.0.8 with ADS | Generic Module + Application Deployment Service |
-| SteamCMD | AMP can install this automatically |
+| `star-conflict.kvp` | Main template. On Linux, a small bash wrapper runs `wine Hub.exe -logFileName star-conflict/logs/hub.log` from `server/cloud`. It streams that log into the AMP console and forwards stop signals to Hub. |
+| `star-conflictupdates.json` | Downloads and extracts the server tarball, creates `mongo-data/`, initialises the Wine prefix. |
+| `star-conflictstart.json` | Pre-start: writes `cloud/data/*_local.cfg` from AMP settings, starts mongod in the background, waits for port 27017 before Hub launches. |
+| `star-conflictports.json` | Ports exposed to players. |
+| `star-conflictconfig.json` | AMP settings: public address, shard player limit, infinite premium, starter pack (credits / GS / token credits), bonus GS per battle, arena bots, kick excessive bots, buy everything. |
+| `star-conflictmetaconfig.json` | Empty. Config is written by start stages. |
 
-### On Linux hosts only (Star Conflict instance only)
+## Ports
 
-| Requirement | Notes |
-|---|---|
-| Wine (stable, winehq.org) | Or use the recommended Docker image `cubecoders/ampbase:wine-stable` |
+| Port | Proto | Service | cvar |
+|---|---|---|---|
+| 3801 | TCP | Load balancer (clients connect here) | `lb_listenTo` |
+| 3802 | TCP | Shard | `shard_listenTo` |
+| 3815 | TCP | Chat | `chat_server_port` |
+| 35000–35049 | TCP+UDP | Battle servers (`DedicatedServer.exe`) | `net_gamePort` |
 
-> **Why Docker on Linux for the Star Conflict instance?**  
-> All Star Conflict server binaries are Windows `.exe` files. The Docker image bundles a correct Wine version and avoids host-side Wine installation and prefix management. The MongoDB instance does **not** need Wine — it uses a native Linux binary.
+Internal only, never forward these: Hub `3850` and MongoDB `27017` (bound to `127.0.0.1`, no auth).
 
----
+## Installing on a NixOS host
 
-## Setting up both AMP instances
+The Linux side needs a 64-bit Wine with WoW64/32-bit support at `/usr/bin/wine`. That doesn't exist on NixOS, so **run the instance in a container**. In ADS, when creating the instance, enable *Use Containers* (AMP needs Docker on the host).
 
-### Step 1 — Copy template files
+```nix
+# configuration.nix
+virtualisation.docker.enable = true;
+users.users.amp.extraGroups = [ "docker" ];   # whatever user runs ADS
 
-Copy **all files** from this folder into your AMP templates directory (typically `~/.ampdata/templates/` or the path shown in AMP's Generic Module settings).
-
-### Step 2 — Create the MongoDB instance
-
-1. In AMP ADS, create a new instance → **Generic Module** → search for **Star Conflict MongoDB**.
-2. Name it something clear, e.g. `StarConflict-DB`.
-3. Run **Update / Install** — AMP downloads MongoDB 2.6.12 and writes the default `mongod.cfg`.
-4. Start the instance and confirm it reaches the **Running** state. Check the console for:
-   ```
-   [initandlisten] waiting for connections on port 27017
-   ```
-
-### Step 3 — Create the Star Conflict instance
-
-1. In AMP ADS, create a new instance → **Generic Module** → search for **Star Conflict**.
-2. Name it e.g. `StarConflict-Server`.
-3. Run **Update / Install** — AMP downloads the game via SteamCMD and (on Linux) initialises Wine.
-
-### Step 4 — Link the instances (startup dependency)
-
-This is what makes AMP automatically start MongoDB before Star Conflict.
-
-1. In AMP ADS, open the **StarConflict-Server** instance → **Instance Settings** (or **Configuration** tab depending on your AMP version).
-2. Find the **Startup Dependencies** / **Application Dependencies** section.
-3. Add `StarConflict-DB` (the MongoDB instance) as a dependency.
-4. Save. AMP will now start `StarConflict-DB` automatically whenever `StarConflict-Server` is started, and will wait for MongoDB to report ready before launching Hub.exe.
-
-> **How AMP knows MongoDB is ready:** The MongoDB template sets `Console.AppReadyRegex` to match the `waiting for connections on port` log line. AMP waits for this before considering the dependency satisfied.
-
----
-
-## Port forwarding
-
-Open the following TCP ports in your router/firewall to allow clients to connect:
-
-| Port | Service | Required for clients? |
-|---|---|---|
-| 3801 | Load Balancer | **Yes** — primary game port |
-| 3802 | Shard | **Yes** — match sessions |
-| 3815 | Chat Server | **Yes** — in-game chat |
-| 3850 | Hub | No — internal only |
-| 2222 | SSH Admin | Optional — admin access |
-| 27017 | MongoDB | **No** — localhost only, managed by MongoDB instance |
-
----
-
-## Configuration
-
-### Via AMP Settings UI
-
-The **Network**, **Performance**, and **Administration** sections in the AMP Settings tab let you change the most common values without editing files manually:
-
-| Setting | Config file | Default |
-|---|---|---|
-| Load Balancer Port | `cloud/data/loadbalancer.cfg` | 3801 |
-| Shard Port | `cloud/data/shard.cfg` | 3802 |
-| Chat Server Port | `cloud/data/chat_server.cfg` | 3815 |
-| Hub Management Port | `cloud/data/hub.cfg` | 3850 |
-| Server FPS Cap | `cloud/data/dediserver.cfg` | 32 |
-| SSH Admin Port | `cloud/data/dediserver.cfg` | 2222 |
-
-### Manual config editing
-
-All service config files live in `<AMP instance root>/star-conflict/212070/cloud/data/`. Each file uses the format:
-
-```
-set variable_name "value"
+networking.firewall = {
+  allowedTCPPorts = [ 3801 3802 3815 ];
+  allowedTCPPortRanges = [ { from = 35000; to = 35049; } ];
+  allowedUDPPortRanges = [ { from = 35000; to = 35049; } ];
+};
 ```
 
-Lines beginning with `//` are comments. Changes take effect on the next server restart. Each service has a `*_local.cfg` companion (e.g. `hub_local.cfg`) which is loaded last and is the safest place for custom overrides — it will not be overwritten by game updates.
+## Adding the template to AMP
 
-### Matchmaking
+1. Push this repo to GitHub (`HimoriTempest/AMP-Star-Conflict`, per `manifest.json`).
+2. In ADS go to **Configuration → Instance Deployment → Configuration Repositories** and add `HimoriTempest/AMP-Star-Conflict:main`. Then click **Fetch latest**.
+3. Create an instance, choose *Generic*, then *Star Conflict*, with containers enabled.
+4. Update the instance. This downloads the server tarball (about 250 MB). No Steam login is needed.
+5. Set **Public Address** to the host name or IP players will use, then start.
 
-Matchmaking queues, MMV weights, and mode-specific behaviour are configured in `cloud/data/default_platform_config.lua`. Refer to `cloud/data/matchmaking.md` (included with the game) for the full parameter reference.
+## Pointing clients at the server
 
----
+The client normally starts its own local stack (`-launchLocalServer`). To use a remote server instead, it must skip that and set `net_masterServerAddress` to `<public-address>:3801`. Do this through a `user_config.cfg` (the client `exec`s that file) or the Steam launch options. This step is **not verified yet**. See below.
 
-## Server architecture overview
+## Account, economy and matchmaking settings
 
-Hub.exe is the **process manager**. When started, it reads `cloud/data/cloud.xml` and launches all child services on the same node:
+Every option is reversible. The original value is the default, and setting it back restores the server's original behaviour on the next start.
 
-| Service | Type ID | Default port |
+| Setting | How it works | Applies to |
 |---|---|---|
-| Load Balancer | 1 | 3801 |
-| Shard | 2 | 3802 |
-| MatchMaker | 3 | — |
-| Game Reward Dispenser | 7 | — |
-| Authenticator | 8 | — |
-| Chat Server | 9 | 3815 |
-| Config Server | 11 | — |
-| Universe | 12 | — |
-| Quest Server | 13 | — |
-| Zone Coordinator | 14 | — |
-| Lobby Server | 16 | — |
-| Achievement Server | 17 | — |
-| Leaderboard Server | 18 | — |
-| Clan Server | 19 | — |
-| Tournament | 20 | — |
-| Early MatchMaker | 21 | — |
-| Scripts Server | 22 | — |
-| Adventure Server | 23 | — |
+| Infinite Premium For All Players | `set auth_infinitePremiumForRoles "player"` in `shard_local.cfg` (empty when off) | All accounts with the default `player` role, on login |
+| New Account Credits | `sm_newAccountCredits` (default 10000) | Accounts created afterwards |
+| Starter Pack: Credits / Galactic Standards / Token Credits | Rewrites the `credits`, `goldCredits` and `tokenCredits` attributes in `cloud/data/starter_pack.xml` (defaults 0/0/0). Any other content in the file is left alone. Setting all three back to 0 gives a byte-identical original. | Accounts created afterwards |
+| Bonus GS Per Win / Per Loss | `reward_bonusGoldForWinner` / `reward_bonusGoldForLooser` in `game_reward_dispencer_local.cfg` | Battles finished afterwards |
+| Bots In Arena Matches | `cvars.mm_botsCount` in `cloud/data/default_platform_config.lua` (vanilla 6; 23 fills a 24-player arena) | Matchmaking, from the next start |
+| Kick Excessive Bots | `cvars.sv_kickExcessiveBotsEnabled` in the same file (vanilla 1) | Battles, from the next start |
+| Buy Everything | `cvars.store_allowAllItemsForBying` in the same file (vanilla 0). Buying obsolete or dev items can break an account. | Store, from the next start |
 
-All services run within the single Hub process tree on a single node (`127.0.0.1:3850`).
+Starter pack and new-account values are only granted when an account is created. Changing them does not touch existing balances.
 
----
+The three matchmaking/store values live in `default_platform_config.lua`, not a `.cfg`. ConfigServer is the only service that reads that file, and it has no override file of its own, so a `set` in a `*_local.cfg` would be overwritten. Only those three `cvars.… = N` lines are rewritten. Setting the vanilla values back gives a byte-identical file.
 
-## Troubleshooting
+These come from SCPatcher (Star Conflict Mod Manager) by Furebel, limited to the parts that are plain config values. Its other mods are not included because they edit game data (loot tables, quests, ore, iridium) and need `prepare_shared` to rebuild the server XML: arena queue timing, arena search fix, canister loot, enemy rarity, iridium multiplier, ore drops and quest GS rewards.
 
-**Server starts but clients cannot connect**
-- Verify ports 3801 and 3802 are open and forwarded.
-- Check that MongoDB is running: `mongo --eval "db.runCommand({ping:1})"`.
+## Custom cvars
 
-**Wine errors on Linux**
-- Use the recommended Docker container (`cubecoders/ampbase:wine-stable`) instead of a host Wine installation.
-- If running without Docker, ensure Wine `stable` from winehq.org is installed, not a distro package.
+Files the template owns are regenerated on every start: `loadbalancer_local.cfg`, `shard_local.cfg`, `chat_server_local.cfg`, `dediserver_local.cfg` and `game_reward_dispencer_local.cfg`. It also rewrites the three currency attributes in `starter_pack.xml` and three cvar lines in `default_platform_config.lua`. Put your own settings in `server/cloud/data/common_local.cfg`. Every service execs it and the template never touches it.
 
-**SteamCMD prompts for Steam credentials**
-- This is expected. Star Conflict requires a Steam account login to download even though it is free-to-play. AMP will prompt for your Steam username, password, and Steam Guard code (if enabled) when you run Update/Install. The account just needs to own or have launched Star Conflict at least once.
+## Status / unverified assumptions
 
-**SteamCMD download fails / times out**
-- The download is the full game client including server files — expect several GB. Check AMP's SteamCMD log for network errors or a Steam maintenance window.
+Verified against build 1.99.0.167293:
+- The process layout and ports listed above.
+- The cvar names (taken from the binaries).
+- Each service looks for `*_local.cfg` overrides. Its logs show `failed to read file '<svc>_local.cfg'` when the file is missing.
+- The stack runs under Wine/Proton: Hub, all services and the bundled mongod run when launched by the game client.
 
-**Services crash immediately after start**
-- The MongoDB instance is not running or the startup dependency is not configured. Check that `StarConflict-DB` is in the Running state, then verify the dependency link under the Star Conflict instance settings.
-- Check `cloud/data/cloud.xml` — the node address (`127.0.0.1:3850`) must be reachable by Hub.
+Not yet tested end-to-end in AMP:
+- That default accounts have `admRole` `player`. The string sits next to `admRole` in `Shard.exe` (`user is not a player`), but no account record has been inspected. If premium does not appear, check an account document's `admRole` in MongoDB.
+- That `tokenCredits` is the daily-capped currency shown in game. The name and the `sv_tokenCreditsDailyLimit` cvar suggest it.
+- That ConfigServer applies `default_platform_config.lua` cvars to MatchMaker, battle servers and the store the same way the game normally does. This is the mechanism SCPatcher relies on, but it has not been tested here.
+- That an empty `net_override*Addr` behaves as "no override".
+- That battle servers pick ports from `net_gamePort` upward, and whether they use TCP or UDP. Both are forwarded.
+- How the client is pointed at a remote server (`net_masterServerAddress` format and where `user_config.cfg` is read from).
+- What happens to Hub on `SIGTERM` under Wine. Child services shut themselves down when Hub disconnects. mongod keeps running between app restarts, and the next start reuses it. It only stops when the container stops.
+- That the tarball is complete for a server-only install. It leaves out the client `.pak` archives, `data/ui` and all `data/levels` textures. `DedicatedServer.exe` references `levels/*.map`, `scene.xml` and `pathfinding.nav`, which are included.
+- The instance is marked Ready when Hub logs that the load balancer registered (`registered itself as 810000000000001`). If that service ID changes, AMP will stay on "Starting" while the server works fine. Adjust `Console.AppReadyRegex` if that happens. Hub writes to a Windows console, not stdout, so its log reaches AMP only through `star-conflict/logs/hub.log`. Each service still writes its own log to `.wine/drive_c/users/*/AppData/Local/Targem/StarConflict/cloud/Hub/logs/`.
 
-**MongoDB instance fails to start**
-- The `fastdl.mongodb.org` download URLs for MongoDB 2.6.12 are legacy endpoints. If they are unavailable, manually place `mongod.exe` (Windows) or `mongod` (Linux) into the `bin/` directory of the MongoDB instance and run Update again skipping the download stage.
-- On Linux, ensure the `mongod` binary has execute permission: `chmod +x bin/mongod`.
+## Rebuilding the server tarball
 
-**Config changes not applied**
-- After editing any `.cfg` file, restart the AMP instance. Live setting changes are not supported.
+From a Steam install of Star Conflict:
+
+```sh
+cd "$HOME/.local/share/Steam/steamapps/common/star conflict"
+tar --sort=name --owner=0 --group=0 --numeric-owner \
+  --exclude='./cloud/Exceptions' --exclude='./cloud/mongodb/data/*' --exclude='*_local.cfg' \
+  --exclude='./cloud/mongodb/'{bsondump,mongoexport,mongofiles,mongoimport,mongooplog,mongoperf,mongos,mongostat,mongotop}.exe \
+  --exclude='./data/levels/*.dds' --exclude='./data/levels/**/*.dds' \
+  -czf star-conflict-server.tar.gz ./cloud ./data/gamedata ./data/levels ./sys_data
+```
+
+`cloud/mongodb/mongo-r2.6.12.zip` is MongoDB's source code. Keep it in the archive: MongoDB 2.6 is AGPL-3.0, and redistributing the binary requires providing the source.

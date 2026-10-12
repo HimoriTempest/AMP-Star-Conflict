@@ -1,0 +1,126 @@
+[
+    {
+        "UpdateStageName": "Write Load Balancer Config",
+        "UpdateSourcePlatform": "All",
+        "UpdateSource": "CreateFile",
+        "UpdateSourceArgs": "{{$FullBaseDir}}cloud/data/loadbalancer_local.cfg",
+        "UpdateSourceData": "// Managed by AMP - regenerated on every start. Put your own overrides in common_local.cfg.\nset lb_listenTo \"{{$LoadBalancerPort}}\"\nset lb_limitPlayersOnShardTo \"{{ShardPlayerLimit}}\"\nset net_overrideShardAddr \"{{PublicAddress}}\"\nset net_overrideChatServerAddr \"{{PublicAddress}}\"\n",
+        "OverwriteExistingFiles": true,
+        "SkipOnFailure": false
+    },
+    {
+        "UpdateStageName": "Write Shard Config",
+        "UpdateSourcePlatform": "All",
+        "UpdateSource": "CreateFile",
+        "UpdateSourceArgs": "{{$FullBaseDir}}cloud/data/shard_local.cfg",
+        "UpdateSourceData": "// Managed by AMP - regenerated on every start. Put your own overrides in common_local.cfg.\nset shard_listenTo \"{{$ShardPort}}\"\nset net_overrideDedicatedServerAddr \"{{PublicAddress}}\"\nset sm_newAccountCredits \"{{NewAccountCredits}}\"\nset auth_infinitePremiumForRoles \"player\"\n",
+        "OverwriteExistingFiles": true,
+        "SkipOnFailure": false,
+        "UpdateSourceConditionSetting": "InfinitePremium",
+        "UpdateSourceConditionValue": "true"
+    },
+    {
+        "UpdateStageName": "Write Shard Config",
+        "UpdateSourcePlatform": "All",
+        "UpdateSource": "CreateFile",
+        "UpdateSourceArgs": "{{$FullBaseDir}}cloud/data/shard_local.cfg",
+        "UpdateSourceData": "// Managed by AMP - regenerated on every start. Put your own overrides in common_local.cfg.\nset shard_listenTo \"{{$ShardPort}}\"\nset net_overrideDedicatedServerAddr \"{{PublicAddress}}\"\nset sm_newAccountCredits \"{{NewAccountCredits}}\"\nset auth_infinitePremiumForRoles \"\"\n",
+        "OverwriteExistingFiles": true,
+        "SkipOnFailure": false,
+        "UpdateSourceConditionSetting": "InfinitePremium",
+        "UpdateSourceConditionValue": "false"
+    },
+    {
+        "UpdateStageName": "Write Chat Server Config",
+        "UpdateSourcePlatform": "All",
+        "UpdateSource": "CreateFile",
+        "UpdateSourceArgs": "{{$FullBaseDir}}cloud/data/chat_server_local.cfg",
+        "UpdateSourceData": "// Managed by AMP - regenerated on every start. Put your own overrides in common_local.cfg.\nset chat_server_port \"{{$ChatPort}}\"\n",
+        "OverwriteExistingFiles": true,
+        "SkipOnFailure": false
+    },
+    {
+        "UpdateStageName": "Write Battle Server Config",
+        "UpdateSourcePlatform": "All",
+        "UpdateSource": "CreateFile",
+        "UpdateSourceArgs": "{{$FullBaseDir}}cloud/data/dediserver_local.cfg",
+        "UpdateSourceData": "// Managed by AMP - regenerated on every start. Put your own overrides in common_local.cfg.\nset net_gamePort \"{{$BattlePort}}\"\n",
+        "OverwriteExistingFiles": true,
+        "SkipOnFailure": false
+    },
+    {
+        "UpdateStageName": "Write Reward Config",
+        "UpdateSourcePlatform": "All",
+        "UpdateSource": "CreateFile",
+        "UpdateSourceArgs": "{{$FullBaseDir}}cloud/data/game_reward_dispencer_local.cfg",
+        "UpdateSourceData": "// Managed by AMP - regenerated on every start. Put your own overrides in common_local.cfg.\nset reward_bonusGoldForWinner \"{{BonusGoldWinner}}\"\nset reward_bonusGoldForLooser \"{{BonusGoldLoser}}\"\n",
+        "OverwriteExistingFiles": true,
+        "SkipOnFailure": false
+    },
+    {
+        "UpdateStageName": "Apply Starter Pack",
+        "UpdateSourcePlatform": "Linux",
+        "UpdateSource": "Executable",
+        "UpdateSourceData": "/bin/bash",
+        "UpdateSourceArgs": "-c \"F=\\\"{{$FullBaseDir}}cloud/data/starter_pack.xml\\\"; sed -i -E \\\"s/(<StarterPack[^>]*[[:space:]]credits=\\\\\\\")[0-9-]*\\\\\\\"/\\\\1{{StarterCredits}}\\\\\\\"/; s/(<StarterPack[^>]*[[:space:]]goldCredits=\\\\\\\")[0-9-]*\\\\\\\"/\\\\1{{StarterGold}}\\\\\\\"/; s/(<StarterPack[^>]*[[:space:]]tokenCredits=\\\\\\\")[0-9-]*\\\\\\\"/\\\\1{{StarterTokens}}\\\\\\\"/\\\" \\\"$F\\\" && grep -o \\\"<StarterPack[^>]*>\\\" \\\"$F\\\"\"",
+        "SkipOnFailure": false
+    },
+    {
+        "UpdateStageName": "Apply Starter Pack",
+        "UpdateSourcePlatform": "Windows",
+        "UpdateSource": "Executable",
+        "UpdateSourceData": "powershell.exe",
+        "UpdateSourceArgs": "-NoProfile -Command \"$f = '{{$FullBaseDir}}cloud\\data\\starter_pack.xml'; $x = Get-Content -Raw $f; $x = $x -replace '(<StarterPack[^>]*\\scredits=\\x22)-?\\d*\\x22', ('${1}' + '{{StarterCredits}}' + [char]34) -replace '(<StarterPack[^>]*\\sgoldCredits=\\x22)-?\\d*\\x22', ('${1}' + '{{StarterGold}}' + [char]34) -replace '(<StarterPack[^>]*\\stokenCredits=\\x22)-?\\d*\\x22', ('${1}' + '{{StarterTokens}}' + [char]34); Set-Content -NoNewline -Encoding ASCII -Path $f -Value $x\"",
+        "SkipOnFailure": false
+    },
+    {
+        "UpdateStageName": "Apply Platform Config",
+        "UpdateSourcePlatform": "Linux",
+        "UpdateSource": "Executable",
+        "UpdateSourceData": "/bin/bash",
+        "UpdateSourceArgs": "-c \"F='{{$FullBaseDir}}cloud/data/default_platform_config.lua'; sed -i -E 's/^([[:space:]]*cvars\\.mm_botsCount[[:space:]]*=[[:space:]]*)[0-9]+/\\1{{ArenaBotsCount}}/; s/^([[:space:]]*cvars\\.sv_kickExcessiveBotsEnabled[[:space:]]*=[[:space:]]*)[0-9]+/\\1{{KickExcessiveBots}}/; s/^([[:space:]]*cvars\\.store_allowAllItemsForBying[[:space:]]*=[[:space:]]*)[0-9]+/\\1{{StoreAllowAllItems}}/' $F && grep -E 'cvars\\.(mm_botsCount|sv_kickExcessiveBotsEnabled|store_allowAllItemsForBying)\\b' $F | tr -d '\\r'\"",
+        "SkipOnFailure": false
+    },
+    {
+        "UpdateStageName": "Apply Platform Config",
+        "UpdateSourcePlatform": "Windows",
+        "UpdateSource": "Executable",
+        "UpdateSourceData": "powershell.exe",
+        "UpdateSourceArgs": "-NoProfile -Command \"$f = '{{$FullBaseDir}}cloud\\data\\default_platform_config.lua'; $x = [IO.File]::ReadAllText($f); $x = $x -replace '(?m)^(\\s*cvars\\.mm_botsCount\\s*=\\s*)\\d+', ('${1}' + '{{ArenaBotsCount}}') -replace '(?m)^(\\s*cvars\\.sv_kickExcessiveBotsEnabled\\s*=\\s*)\\d+', ('${1}' + '{{KickExcessiveBots}}') -replace '(?m)^(\\s*cvars\\.store_allowAllItemsForBying\\s*=\\s*)\\d+', ('${1}' + '{{StoreAllowAllItems}}'); [IO.File]::WriteAllText($f, $x)\"",
+        "SkipOnFailure": false
+    },
+    {
+        "UpdateStageName": "Run MongoDB",
+        "UpdateSourcePlatform": "Linux",
+        "UpdateSource": "Executable",
+        "UpdateSourceData": "/bin/bash",
+        "UpdateSourceArgs": "-c \"export WINEPREFIX=\\\"{{$FullRootDir}}.wine\\\" WINEARCH=win64 WINEDEBUG=-all WINEDLLOVERRIDES=\\\"mscoree,mshtml=\\\"; (exec 3<>/dev/tcp/127.0.0.1/27017) 2>/dev/null && { echo \\\"MongoDB is already running\\\"; exit 0; }; mkdir -p \\\"{{$FullRootDir}}mongo-data\\\" && cd \\\"{{$FullBaseDir}}cloud/mongodb\\\" && exec /usr/bin/wine mongod.exe --dbpath \\\"Z:{{$FullRootDir}}mongo-data\\\" --bind_ip 127.0.0.1 --port 27017 --smallfiles --logpath \\\"Z:{{$FullRootDir}}mongo-data/mongod.log\\\" --logappend\"",
+        "RunInBackground": true,
+        "SkipOnFailure": false
+    },
+    {
+        "UpdateStageName": "Run MongoDB",
+        "UpdateSourcePlatform": "Windows",
+        "UpdateSource": "Executable",
+        "UpdateSourceData": "powershell.exe",
+        "UpdateSourceArgs": "-NoProfile -Command \"try { $c = [Net.Sockets.TcpClient]::new('127.0.0.1', 27017); $c.Close(); Write-Output 'MongoDB is already running'; exit 0 } catch {}; New-Item -ItemType Directory -Force -Path '{{$FullRootDir}}mongo-data' | Out-Null; Set-Location '{{$FullBaseDir}}cloud\\mongodb'; & .\\mongod.exe --dbpath '{{$FullRootDir}}mongo-data' --bind_ip 127.0.0.1 --port 27017 --smallfiles --logpath '{{$FullRootDir}}mongo-data\\mongod.log' --logappend\"",
+        "RunInBackground": true,
+        "SkipOnFailure": false
+    },
+    {
+        "UpdateStageName": "Wait For MongoDB",
+        "UpdateSourcePlatform": "Linux",
+        "UpdateSource": "Executable",
+        "UpdateSourceData": "/bin/bash",
+        "UpdateSourceArgs": "-c \"for i in $(seq 1 90); do (exec 3<>/dev/tcp/127.0.0.1/27017) 2>/dev/null && { echo \\\"MongoDB is up\\\"; exit 0; }; sleep 1; done; echo \\\"MongoDB did not start within 90s, see mongo-data/mongod.log. Aborting\\\"; exit 1\"",
+        "SkipOnFailure": false
+    },
+    {
+        "UpdateStageName": "Wait For MongoDB",
+        "UpdateSourcePlatform": "Windows",
+        "UpdateSource": "Executable",
+        "UpdateSourceData": "powershell.exe",
+        "UpdateSourceArgs": "-NoProfile -Command \"for ($i = 0; $i -lt 90; $i++) { try { $c = [Net.Sockets.TcpClient]::new('127.0.0.1', 27017); $c.Close(); Write-Output 'MongoDB is up'; exit 0 } catch { Start-Sleep -Seconds 1 } }; Write-Output 'MongoDB did not start within 90s, see mongo-data\\mongod.log. Aborting'; exit 1\"",
+        "SkipOnFailure": false
+    }
+]
