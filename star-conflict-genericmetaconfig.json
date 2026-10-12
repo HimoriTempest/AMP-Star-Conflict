@@ -2,50 +2,36 @@
     {
         "ConfigFile": "cloud/data/hub.cfg",
         "AutoMap": true,
-        "ConfigType": "ini",
+        "ConfigType": "kvp",
         "ConfigFormat": "set {0} \"{1}\"",
-        "ConfigFormatRegex": "^set\\s+(?<key>\\S+)\\s+\"?(?<value>[^\"\\n]*?)\"?\\s*(?://.*)?$"
+        "ConfigFormatRegex": "^set (?<key>.+?) \"(?<value>.*?)\".*$"
     },
     {
         "ConfigFile": "cloud/data/loadbalancer.cfg",
         "AutoMap": true,
-        "ConfigType": "ini",
+        "ConfigType": "kvp",
         "ConfigFormat": "set {0} \"{1}\"",
-        "ConfigFormatRegex": "^set\\s+(?<key>\\S+)\\s+\"?(?<value>[^\"\\n]*?)\"?\\s*(?://.*)?$"
+        "ConfigFormatRegex": "^set (?<key>.+?) \"(?<value>.*?)\".*$"
     },
     {
         "ConfigFile": "cloud/data/shard.cfg",
         "AutoMap": true,
-        "ConfigType": "ini",
+        "ConfigType": "kvp",
         "ConfigFormat": "set {0} \"{1}\"",
-        "ConfigFormatRegex": "^set\\s+(?<key>\\S+)\\s+\"?(?<value>[^\"\\n]*?)\"?\\s*(?://.*)?$"
+        "ConfigFormatRegex": "^set (?<key>.+?) \"(?<value>.*?)\".*$"
     },
     {
         "ConfigFile": "cloud/data/chat_server.cfg",
         "AutoMap": true,
-        "ConfigType": "ini",
+        "ConfigType": "kvp",
         "ConfigFormat": "set {0} \"{1}\"",
-        "ConfigFormatRegex": "^set\\s+(?<key>\\S+)\\s+\"?(?<value>[^\"\\n]*?)\"?\\s*(?://.*)?$"
+        "ConfigFormatRegex": "^set (?<key>.+?) \"(?<value>.*?)\".*$"
     },
     {
         "ConfigFile": "cloud/data/dediserver.cfg",
         "AutoMap": true,
-        "ConfigType": "ini",
-        "ConfigFormat": "set {0} \"{1}\"",
-        "ConfigFormatRegex": "^set\\s+(?<key>\\S+)\\s+\"?(?<value>[^\"\\n]*?)\"?\\s*(?://.*)?$"
-    },
-    {
-        "ConfigFile": "cloud/data/matchmaker.cfg",
-        "AutoMap": true,
-        "ConfigType": "ini",
-        "ConfigFormat": "set {0} \"{1}\"",
-        "ConfigFormatRegex": "^set\\s+(?<key>\\S+)\\s+\"?(?<value>[^\"\\n]*?)\"?\\s*(?://.*)?$"
-    },
-    {
-        "ConfigFile": "cloud/data/common.cfg",
-        "AutoMap": true,
-        "ConfigType": "ini",
-        "ConfigFormat": "set {0} \"{1}\"",
-        "ConfigFormatRegex": "^set\\s+(?<key>\\S+)\\s+\"?(?<value>[^\"\\n]*?)\"?\\s*(?://.*)?$"
+        "ConfigType": "kvp",
+        "ConfigFormat": "set {0} {1}",
+        "ConfigFormatRegex": "^set (?<key>.+?) (?<value>[^\"]*?)(?: .*)?$"
     }
 ]
