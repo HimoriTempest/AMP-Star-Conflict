@@ -3,7 +3,7 @@
         "DisplayName": "Public Address",
         "Category": "Star Conflict:rocket_launch",
         "Subcategory": "Network:lan:1",
-        "Description": "Hostname or IP that remote players use to reach this server. The load balancer and shard hand this address to clients for the shard, chat and battle servers. Leave empty for same-machine play only (services then advertise 127.0.0.1).",
+        "Description": "IP address players use to reach this server. It is written as the node address in cloud/data/cloud.xml, which the load balancer hands to clients for the shard, chat and battle servers. Empty = use the application IP binding, or if that is 0.0.0.0 the instance IP binding (Webserver.IPBinding), or 127.0.0.1 if neither is set. Must be an IP of one of the host's own network interfaces (for example a NetBird/Tailscale/LAN IP): Hub finds its own node by checking its interfaces, so a DNS name or NAT-forwarded public IP stops Hub from starting. Set 127.0.0.1 for the game's original same-machine-only value.",
         "Keywords": "ip,address,public,host,external,override",
         "FieldName": "PublicAddress",
         "InputType": "text",
@@ -11,7 +11,7 @@
         "ParamFieldName": "PublicAddress",
         "IncludeInCommandLine": false,
         "DefaultValue": "",
-        "Placeholder": "sc.example.com",
+        "Placeholder": "empty = instance IP binding",
         "EnumValues": {}
     },
     {

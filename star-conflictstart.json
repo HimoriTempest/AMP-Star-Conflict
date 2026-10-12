@@ -99,6 +99,22 @@
         "SkipOnFailure": false
     },
     {
+        "UpdateStageName": "Apply Cloud Node Address",
+        "UpdateSourcePlatform": "Linux",
+        "UpdateSource": "Executable",
+        "UpdateSourceData": "/bin/bash",
+        "UpdateSourceArgs": "-c \"H='{{PublicAddress}}'; if [ -z \\\"$H\\\" ]; then H='{{$ApplicationIPBinding}}'; fi; if [ -z \\\"$H\\\" ] || [ \\\"$H\\\" = 0.0.0.0 ]; then H=$(sed -n 's/^Webserver\\.IPBinding=//p' '{{$FullRootDir}}../AMPConfig.conf' 2>/dev/null | tr -d '\\r' | head -1); fi; if [ -z \\\"$H\\\" ] || [ \\\"$H\\\" = 0.0.0.0 ]; then H=127.0.0.1; fi; echo \\\"Cloud node address: $H\\\"; F='{{$FullBaseDir}}cloud/data/cloud.xml'; sed -i -E 's/(<Node[^>]*[[:space:]]address=\\x22)[^\\x22:]*:/\\1'\\\"$H\\\"':/' \\\"$F\\\" && grep -o '<Node[^>]*>' \\\"$F\\\"\"",
+        "SkipOnFailure": false
+    },
+    {
+        "UpdateStageName": "Apply Cloud Node Address",
+        "UpdateSourcePlatform": "Windows",
+        "UpdateSource": "Executable",
+        "UpdateSourceData": "powershell.exe",
+        "UpdateSourceArgs": "-NoProfile -Command \"$h = '{{PublicAddress}}'; if (-not $h) { $h = '{{$ApplicationIPBinding}}' }; if (-not $h -or $h -eq '0.0.0.0') { $c = Join-Path '{{$FullRootDir}}' '..\\AMPConfig.conf'; if (Test-Path $c) { $m = Select-String -Path $c -Pattern '^Webserver\\.IPBinding=(.*)$' | Select-Object -First 1; if ($m) { $h = $m.Matches[0].Groups[1].Value.Trim() } } }; if (-not $h -or $h -eq '0.0.0.0') { $h = '127.0.0.1' }; Write-Output ('Cloud node address: ' + $h); $f = '{{$FullBaseDir}}cloud\\data\\cloud.xml'; $x = [IO.File]::ReadAllText($f); $x = $x -replace '(<Node[^>]*\\saddress=\\x22)[^\\x22:]*:', ('${1}' + $h + ':'); [IO.File]::WriteAllText($f, $x)\"",
+        "SkipOnFailure": false
+    },
+    {
         "UpdateStageName": "Write MongoDB Start Script",
         "UpdateSourcePlatform": "Linux",
         "UpdateSource": "CreateFile",
