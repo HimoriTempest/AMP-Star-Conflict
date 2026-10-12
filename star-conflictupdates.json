@@ -1,13 +1,23 @@
 [
     {
         "UpdateStageName": "Server Files Download",
-        "UpdateSourcePlatform": "All",
-        "UpdateSource": "FetchURL",
-        "UpdateSourceData": "https://nx.himori.dev/public.php/dav/files/wyxJddcXopyeJDW",
-        "UpdateSourceArgs": "star-conflict-server.tar.gz",
-        "UpdateSourceTarget": "{{$FullRootDir}}",
-        "OverwriteExistingFiles": true,
-        "SkipOnFailure": false
+        "UpdateSourcePlatform": "Linux",
+        "UpdateSource": "Executable",
+        "UpdateSourceData": "/bin/bash",
+        "UpdateSourceArgs": "-c \"cd \\\"{{$FullRootDir}}\\\" && echo 'Downloading {{ServerTarballURL}}' && wget -nv -O star-conflict-server.tar.gz '{{ServerTarballURL}}' || { echo 'Server tarball download failed. Aborting'; rm -f star-conflict-server.tar.gz; exit 1; }\"",
+        "SkipOnFailure": false,
+        "UpdateSourceConditionSetting": "ServerSource",
+        "UpdateSourceConditionValue": "url"
+    },
+    {
+        "UpdateStageName": "Server Files Download",
+        "UpdateSourcePlatform": "Windows",
+        "UpdateSource": "Executable",
+        "UpdateSourceData": "powershell.exe",
+        "UpdateSourceArgs": "-NoProfile -Command \"$ProgressPreference='SilentlyContinue'; [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Write-Output 'Downloading {{ServerTarballURL}}'; try { Invoke-WebRequest -UseBasicParsing -Uri '{{ServerTarballURL}}' -OutFile '{{$FullRootDir}}star-conflict-server.tar.gz' } catch { Write-Output 'Server tarball download failed. Aborting'; exit 1 }\"",
+        "SkipOnFailure": false,
+        "UpdateSourceConditionSetting": "ServerSource",
+        "UpdateSourceConditionValue": "url"
     },
     {
         "UpdateStageName": "Server Files Extract",
@@ -15,7 +25,9 @@
         "UpdateSource": "Executable",
         "UpdateSourceData": "/bin/bash",
         "UpdateSourceArgs": "-c \"mkdir -p \\\"{{$FullBaseDir}}\\\" && tar -xzf \\\"{{$FullRootDir}}star-conflict-server.tar.gz\\\" -C \\\"{{$FullBaseDir}}\\\" && rm -f \\\"{{$FullRootDir}}star-conflict-server.tar.gz\\\"\"",
-        "SkipOnFailure": false
+        "SkipOnFailure": false,
+        "UpdateSourceConditionSetting": "ServerSource",
+        "UpdateSourceConditionValue": "url"
     },
     {
         "UpdateStageName": "Server Files Extract",
@@ -23,7 +35,40 @@
         "UpdateSource": "Executable",
         "UpdateSourceData": "powershell.exe",
         "UpdateSourceArgs": "-NoProfile -Command \"New-Item -ItemType Directory -Force -Path '{{$FullBaseDir}}' | Out-Null; & tar.exe -xzf '{{$FullRootDir}}star-conflict-server.tar.gz' -C '{{$FullBaseDir}}'; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; Remove-Item -Force '{{$FullRootDir}}star-conflict-server.tar.gz'\"",
-        "SkipOnFailure": false
+        "SkipOnFailure": false,
+        "UpdateSourceConditionSetting": "ServerSource",
+        "UpdateSourceConditionValue": "url"
+    },
+    {
+        "UpdateStageName": "SteamCMD Download",
+        "UpdateSourcePlatform": "All",
+        "UpdateSource": "SteamCMD",
+        "UpdateSourceData": "212070",
+        "UpdateSourceArgs": "212070",
+        "ForceDownloadPlatform": "Windows",
+        "SkipOnFailure": false,
+        "UpdateSourceConditionSetting": "ServerSource",
+        "UpdateSourceConditionValue": "steamcmd"
+    },
+    {
+        "UpdateStageName": "Link Steam Files",
+        "UpdateSourcePlatform": "Linux",
+        "UpdateSource": "Executable",
+        "UpdateSourceData": "/bin/bash",
+        "UpdateSourceArgs": "-c \"S=\\\"{{$FullRootDir}}212070\\\"; [ -d \\\"$S/cloud\\\" ] || { echo \\\"Steam files not found in $S. Aborting\\\"; exit 1; }; mkdir -p \\\"{{$FullBaseDir}}\\\" && cp -al --remove-destination \\\"$S/.\\\" \\\"{{$FullBaseDir}}\\\" && echo \\\"Server files hard-linked from $S\\\"\"",
+        "SkipOnFailure": false,
+        "UpdateSourceConditionSetting": "ServerSource",
+        "UpdateSourceConditionValue": "steamcmd"
+    },
+    {
+        "UpdateStageName": "Link Steam Files",
+        "UpdateSourcePlatform": "Windows",
+        "UpdateSource": "Executable",
+        "UpdateSourceData": "powershell.exe",
+        "UpdateSourceArgs": "-NoProfile -Command \"$s = '{{$FullRootDir}}212070'; if (-not (Test-Path (Join-Path $s 'cloud'))) { Write-Output ('Steam files not found in ' + $s + '. Aborting'); exit 1 }; & robocopy.exe $s '{{$FullBaseDir}}' /E /NFL /NDL /NJH /NJS /NP | Out-Null; if ($LASTEXITCODE -ge 8) { Write-Output 'Copying the Steam files failed'; exit 1 }; Write-Output ('Server files copied from ' + $s); exit 0\"",
+        "SkipOnFailure": false,
+        "UpdateSourceConditionSetting": "ServerSource",
+        "UpdateSourceConditionValue": "steamcmd"
     },
     {
         "UpdateStageName": "MongoDB Data Directory Creation",

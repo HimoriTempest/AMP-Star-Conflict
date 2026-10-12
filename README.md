@@ -2,7 +2,7 @@
 
 Hosts the self-contained Star Conflict server stack in CubeCoders AMP.
 
-The server files come from [`star-conflict-server.tar.gz`](https://nx.himori.dev/public.php/dav/files/wyxJddcXopyeJDW). It contains `cloud/` (with the bundled MongoDB 2.6.12 in `cloud/mongodb/`), all of `data/` (including every `.pak` archive) and `sys_data/`, about 12 GB. The archive is extracted to `star-conflict/server/`.
+The server files come from either a **server tarball** downloaded from a URL (default: [`star-conflict-server.tar.gz`](https://nx.himori.dev/public.php/dav/files/wyxJddcXopyeJDW)) or **SteamCMD** (Steam app 212070). Choose with **Server Files Source** under the Updates settings; see [Server files](#server-files). The tarball contains `cloud/` (with the bundled MongoDB 2.6.12 in `cloud/mongodb/`), all of `data/` (including every `.pak` archive) and `sys_data/`, about 12 GB. The archive is extracted to `star-conflict/server/`.
 
 - `Hub.exe` is the supervisor. It reads `cloud/data/cloud.xml` and spawns about 17 services: LoadBalancer, Shard, MatchMaker, Chat, Universe, ZoneCoordinator and others.
 - `ZoneCoordinator` spawns one `DedicatedServer.exe` per battle.
@@ -17,11 +17,27 @@ All binaries are Windows-only (Hub and services are 32-bit, mongod is 64-bit). O
 | File | Purpose |
 |---|---|
 | `star-conflict.kvp` | Main template. On Linux it runs `star-conflict/hub-wrapper.sh` (written by a start stage), which starts `wine Hub.exe` from `server/cloud`, streams Hub's log into the AMP console and forwards stop signals to Hub. |
-| `star-conflictupdates.json` | Downloads and extracts the server tarball, creates `mongo-data/`, initialises the Wine prefix. |
+| `star-conflictupdates.json` | Gets the server files: either downloads and extracts the tarball from Server Tarball URL, or installs Steam app 212070 with SteamCMD and hard-links it into `server/`. It also creates `mongo-data/`, initialises the Wine prefix. |
 | `star-conflictstart.json` | Pre-start: writes the `*_local.cfg` files, the starter pack, the AMP block in `default_platform_config.lua` (via `amp-settings.sh` / `.ps1`) and the `cloud.xml` node address. Then it restarts the Wine server and MongoDB and waits for port 27017 before Hub launches. |
 | `star-conflictports.json` | Ports exposed to players. |
 | `star-conflictconfig.json` | AMP settings: public address, accounts (starting credits/GS, premium), economy (XP/credit multipliers, prices, bonuses), battles, matchmaking. See [Settings](#settings). |
 | `star-conflictmetaconfig.json` | Empty. Config is written by start stages. |
+
+## Server files
+
+**Server Files Source** (Updates settings) decides where **Update** gets the server files:
+
+| | Tarball URL (default) | SteamCMD |
+|---|---|---|
+| Source | **Server Tarball URL**: a direct `.tar.gz` link with `./cloud`, `./data` and `./sys_data` at the top. For a Nextcloud share, use `https://<host>/public.php/dav/files/<token>` or append `/download` to the share link. | Steam app 212070, Windows depot, through AMP's SteamCMD |
+| Download | about 10 GB, `wget` (Linux) or `Invoke-WebRequest` (Windows), on every update | about 12 GB the first time, then only Steam's changes |
+| Lands in | extracted into `star-conflict/server/` | installed into `star-conflict/212070/`, then **hard-linked** into `star-conflict/server/` (`cp -al`; no extra disk space). Windows copies with `robocopy` instead. |
+| Login | none | **Steam login required.** Anonymous download is refused (`ERROR! Failed to install app '212070' (No subscription)`, tested with SteamCMD). AMP asks for username, password and Steam Guard code during the update (`App.SteamUpdateAnonymousLogin=False`). The account needs Star Conflict in its library; it's free to play, so add it once in the Steam client. A separate Steam account for the server is recommended. |
+| Version | whatever the tarball was built from | the current Steam version of the game |
+
+Either way, files that exist only in `star-conflict/server/` are kept, such as `common_local.cfg` and the `*_local.cfg` files. Files from the download overwrite the template's edits (`default_platform_config.lua`, `starter_pack.xml`, `cloud.xml`), and the start stages reapply those on the next start. With SteamCMD, those edits replace the hard link instead of writing through it, so Steam's own copies in `212070/` stay original and Steam's file validation doesn't fight them.
+
+Switching from Tarball URL to SteamCMD later works the same way: the Steam files are linked over the extracted ones. The SteamCMD install location `star-conflict/212070/` follows AMP's `<RootDir>/<app id>` convention. The link step aborts with a message if the files aren't there.
 
 ## Ports
 
@@ -57,7 +73,7 @@ networking.firewall = {
 1. Push this repo to GitHub (`HimoriTempest/AMPStarConflict`, per `manifest.json`). The repository name must not contain hyphens. AMP rebuilds the template source from `<owner>-<repo>-<branch>`, and a hyphenated repo name makes upgrades fail with `source --main`.
 2. In ADS go to **Configuration → Instance Deployment → Configuration Repositories** and add `HimoriTempest/AMPStarConflict:main`. Then click **Fetch latest**.
 3. Create an instance, choose *Generic*, then *Star Conflict*, with containers enabled.
-4. Update the instance. This downloads the server tarball (about 12 GB). No Steam login is needed.
+4. Pick **Server Files Source** (Updates settings), then update the instance. *Tarball URL* downloads the tarball from **Server Tarball URL** (about 10 GB, no Steam login). *SteamCMD* installs Steam app 212070 (about 12 GB) and asks for a Steam login.
 5. Optionally set **Public Address**. If it's empty, the server advertises the application IP binding, or the instance IP binding (`Webserver.IPBinding`) when the application binding is `0.0.0.0`. Whatever is used must be an IP of one of the host's own network interfaces, such as its NetBird, Tailscale or LAN address. A DNS name or a NAT-forwarded public IP stops Hub from starting.
 
 ## Pointing clients at the server
@@ -109,6 +125,7 @@ Bots, Kick Excessive Bots and Buy Everything come from SCPatcher (Star Conflict 
 | `default_platform_config.lua` | AMP block at the end: Accounts, Economy, Battles, Max Players. In place: Bots, Kick Excessive Bots, Buy Everything, Battle Pass |
 | `starter_pack.xml` | Starter Pack |
 | `cloud.xml` | Public Address (node address) |
+| `common_local.cfg` | External MongoDB (AMP block only) |
 | `loadbalancer_local.cfg`, `shard_local.cfg`, `chat_server_local.cfg`, `dediserver_local.cfg` | Ports, Public Address |
 
 The scripts that write them are regenerated in `star-conflict/` on every start: `amp-settings.sh` (or `.ps1` on Windows), `mongo-start.sh` and `hub-wrapper.sh`.
@@ -126,11 +143,23 @@ Logins and logouts only appear in the shard's log, not Hub's. `hub-wrapper.sh` f
 
 `Console.UserJoinRegex` / `UserLeaveRegex` match the first and third lines, so AMP's user list, user count and history work. `Console.MetricsRegex` turns the last line into a **Registered Accounts** metric. Connections that never log in (uid 0, such as port checks) are ignored. AMP clears its user list when the application stops.
 
+## External MongoDB
+
+Set **MongoDB** to *External* and **External MongoDB Hosts** to the server, under the Database settings:
+
+- **Format** (the game's `db_mongoHosts`): `host:port`, or a replica set as `host1:port,host2:port,host3:port`. The game asks the servers which one is primary (`ismaster`). Options may follow after `|`, for example `|connpool=5`. The port defaults to 27017.
+- **How it's applied:** every service and every battle server executes `common.cfg`, and with it `common_local.cfg`, before connecting to the database. The template therefore writes `set db_mongoHosts "…"` there, in a block between `// >>> AMP managed` and `// <<< AMP managed`. Everything else in that file stays yours. Switching back to *Bundled* removes the block.
+- **On start:** the bundled MongoDB is not started. "Wait For External MongoDB" waits up to 60 seconds for one of the hosts to accept connections, otherwise the start is aborted. "Prepare MongoDB" still restarts the Wine server, but it only stops a *bundled* `mongod`, never whatever else answers on port 27017.
+- **No authentication.** The game's driver has no login support (no SCRAM or MONGODB-CR in the binaries), so the external MongoDB must accept unauthenticated connections from this host. Keep it on a private network or behind a firewall.
+- **Version.** The driver is from the MongoDB 2.6 era and uses the legacy wire protocol, which MongoDB 5.1+ dropped. Use **MongoDB 4.4 or older**. Untested against an external server so far.
+- **Data is not migrated.** Database names get the Wine user as a suffix (`cosmosim_amp`, `stats_cosmosim_amp`, `achievements_amp`, `logs_amp`, `games_amp`, `delivered_amp`). Copy them with the bundled `mongodump` / `mongorestore` before switching, while the game is stopped.
+- The "Registered accounts" metric queries the first host of the list (reads from a secondary are allowed).
+
 ## Custom cvars
 
 Files the template owns are regenerated on every start: `loadbalancer_local.cfg`, `shard_local.cfg`, `chat_server_local.cfg`, `dediserver_local.cfg` and `game_reward_dispencer_local.cfg`. It also rewrites the AMP block and three cvar lines in `default_platform_config.lua`, the currency attributes in `starter_pack.xml` and the node address in `cloud.xml`.
 
-Your own `.cfg` settings go in `server/cloud/data/common_local.cfg`. Every service execs it, and the template never touches it. They only take effect for cvars that `default_platform_config.lua` doesn't set. For anything that file defines, change the file itself, outside the AMP block, which is rewritten on every start.
+Your own `.cfg` settings go in `server/cloud/data/common_local.cfg`. Every service and battle server execs it. The template only manages the `// >>> AMP managed` … `// <<< AMP managed` block in it, used for an external MongoDB, and never touches the rest. They only take effect for cvars that `default_platform_config.lua` doesn't set. For anything that file defines, change the file itself, outside the AMP block, which is rewritten on every start.
 
 ## Status / unverified assumptions
 

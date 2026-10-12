@@ -416,5 +416,69 @@
         "IncludeInCommandLine": false,
         "DefaultValue": "0",
         "EnumValues": {}
+    },
+    {
+        "DisplayName": "MongoDB",
+        "Category": "Star Conflict:rocket_launch",
+        "Subcategory": "Database:storage:8",
+        "Description": "Bundled: the MongoDB 2.6 that ships with the server, run under Wine, data in star-conflict/mongo-data. External: an existing MongoDB server set in External MongoDB Hosts; the bundled one is not started. The game's database driver has no login support, so the external MongoDB must accept connections without authentication from this host (keep it on a private network/firewalled), and it speaks the old wire protocol, so use MongoDB 4.4 or older (5.1+ dropped the legacy commands). Data is not migrated automatically: mongodump the cosmosim_<user>, stats_cosmosim_<user>, achievements_<user>, logs_<user>, games_<user> and delivered_<user> databases from the bundled one and mongorestore them into the external one first. Edits: star-conflict/server/cloud/data/common_local.cfg (AMP block, external only).",
+        "Keywords": "mongodb,mongo,database,db,external",
+        "FieldName": "MongoMode",
+        "InputType": "enum",
+        "IsFlagArgument": false,
+        "ParamFieldName": "MongoMode",
+        "IncludeInCommandLine": false,
+        "DefaultValue": "internal",
+        "EnumValues": {
+            "internal": "Bundled",
+            "external": "External"
+        }
+    },
+    {
+        "DisplayName": "External MongoDB Hosts",
+        "Category": "Star Conflict:rocket_launch",
+        "Subcategory": "Database:storage:8",
+        "Description": "Only used with MongoDB set to External. Written to the game's db_mongoHosts: host:port, or a replica set as host1:port,host2:port,host3:port (the game finds the primary itself); options may follow after | (for example |connpool=5). Port defaults to 27017. The start waits up to 60 seconds for one of the hosts to accept connections. Edits: star-conflict/server/cloud/data/common_local.cfg (AMP block).",
+        "Keywords": "mongodb,mongo,database,db,external,host,replica",
+        "FieldName": "MongoHosts",
+        "InputType": "text",
+        "IsFlagArgument": false,
+        "ParamFieldName": "MongoHosts",
+        "IncludeInCommandLine": false,
+        "DefaultValue": "",
+        "Placeholder": "192.168.1.10:27017",
+        "EnumValues": {}
+    },
+    {
+        "DisplayName": "Server Files Source",
+        "Category": "Updates",
+        "Subcategory": "Server Files:download:1",
+        "Description": "Where Update gets the server files from. Tarball URL: downloads and extracts the server tarball (cloud/, data/, sys_data/) from Server Tarball URL into star-conflict/server. SteamCMD: installs Steam app 212070 (Windows depot, about 12 GB) into star-conflict/212070 with AMP's SteamCMD and hard-links it into star-conflict/server (no extra disk space; the template's config edits replace files instead of changing them, so Steam's copies stay untouched). SteamCMD needs a Steam login: anonymous download is refused for this app ('No subscription'). AMP asks for the Steam username, password and Steam Guard code during the update. The account must have Star Conflict in its library (free to play: add it once in the Steam client); a separate Steam account just for the server is recommended. Files only present in star-conflict/server (such as common_local.cfg) are kept either way.",
+        "Keywords": "update,download,steam,steamcmd,tarball,url,server,files",
+        "FieldName": "ServerSource",
+        "InputType": "enum",
+        "IsFlagArgument": false,
+        "ParamFieldName": "ServerSource",
+        "IncludeInCommandLine": false,
+        "DefaultValue": "url",
+        "EnumValues": {
+            "url": "Tarball URL",
+            "steamcmd": "SteamCMD (Steam app 212070)"
+        }
+    },
+    {
+        "DisplayName": "Server Tarball URL",
+        "Category": "Updates",
+        "Subcategory": "Server Files:download:1",
+        "Description": "Direct download URL of the server tarball (.tar.gz with ./cloud, ./data and ./sys_data at the top level), used with Server Files Source = Tarball URL. Must be a direct link, not a share page; for a Nextcloud share use https://<host>/public.php/dav/files/<share token> or append /download. See the README for how to build the tarball.",
+        "Keywords": "update,download,tarball,url,server,files",
+        "FieldName": "ServerTarballURL",
+        "InputType": "text",
+        "IsFlagArgument": false,
+        "ParamFieldName": "ServerTarballURL",
+        "IncludeInCommandLine": false,
+        "DefaultValue": "https://nx.himori.dev/public.php/dav/files/wyxJddcXopyeJDW",
+        "Placeholder": "https://example.com/star-conflict-server.tar.gz",
+        "EnumValues": {}
     }
 ]
