@@ -103,8 +103,16 @@
         "UpdateSourcePlatform": "Linux",
         "UpdateSource": "CreateFile",
         "UpdateSourceArgs": "{{$FullRootDir}}mongo-start.sh",
-        "UpdateSourceData": "#!/bin/bash\n# Managed by AMP - regenerated on every start.\n# Starts MongoDB under a freshly started Wine server, so nothing from the previous run\n# (stray services, sockets they left open) survives into the new one.\nexport WINEPREFIX='{{$FullRootDir}}.wine' WINEARCH=win64 WINEDEBUG=-all WINEDLLOVERRIDES='mscoree,mshtml='\nWINESERVER=\"$(dirname \"$(readlink -f /usr/bin/wine)\")/wineserver\"\nDATA='{{$FullRootDir}}mongo-data'\nport_open() { (exec 3<>/dev/tcp/127.0.0.1/27017) 2>/dev/null; }\nmongod_running() { ps -eo args | grep -q '^[^ ]*[m]ongod\\.exe'; }\ncd '{{$FullBaseDir}}cloud/mongodb' || exit 1\nif port_open; then\n  echo 'Stopping MongoDB from the previous run'\n  /usr/bin/wine mongo.exe --quiet --eval \"db.getSiblingDB('admin').shutdownServer()\" >/dev/null 2>&1\nfi\n# mongod closes its port first and removes its lock file last, so wait for the process itself.\nfor i in $(seq 1 60); do mongod_running || break; sleep 1; done\nmongod_running && echo 'WARNING: MongoDB did not exit within 60s, restarting the Wine server anyway'\necho 'Restarting the Wine server'\n\"$WINESERVER\" -k 2>/dev/null\n\"$WINESERVER\" -w 2>/dev/null\nmkdir -p \"$DATA\"\n# A non-empty lock with no journal files means a clean shutdown was cut off after its final commit\n# and journal cleanup, so the data files are consistent and only the lock is stale. With journal\n# files present, mongod recovers from the journal itself, so the lock is left alone.\nif [ -s \"$DATA/mongod.lock\" ] && ! ls \"$DATA\"/journal/j._* >/dev/null 2>&1; then\n  echo 'Clearing a stale mongod.lock left by an interrupted clean shutdown'\n  : > \"$DATA/mongod.lock\"\nfi\nexec /usr/bin/wine mongod.exe --dbpath \"Z:$DATA\" --bind_ip 127.0.0.1 --port 27017 --smallfiles --logpath \"Z:$DATA/mongod.log\" --logappend\n",
+        "UpdateSourceData": "#!/bin/bash\n# Managed by AMP - regenerated on every start.\n# \"prepare\" (foreground stage): stops the previous MongoDB and restarts the Wine server, so nothing\n#   from the previous run (stray services, sockets they left open) survives into the new one.\n# \"run\" (background stage): starts MongoDB.\n# The two must be separate stages: \"run\" is a background stage, and anything slow in it would race\n# with the stages after it.\nexport WINEPREFIX='{{$FullRootDir}}.wine' WINEARCH=win64 WINEDEBUG=-all WINEDLLOVERRIDES='mscoree,mshtml='\nWINESERVER=\"$(dirname \"$(readlink -f /usr/bin/wine)\")/wineserver\"\nDATA='{{$FullRootDir}}mongo-data'\nport_open() { (exec 3<>/dev/tcp/127.0.0.1/27017) 2>/dev/null; }\nmongod_running() { ps -eo args | grep -q '^[^ ]*[m]ongod\\.exe'; }\ncd '{{$FullBaseDir}}cloud/mongodb' || exit 1\ncase \"$1\" in\n  prepare)\n    if port_open; then\n      echo 'Stopping MongoDB from the previous run'\n      /usr/bin/wine mongo.exe --quiet --eval \"db.getSiblingDB('admin').shutdownServer()\" >/dev/null 2>&1\n    fi\n    # mongod closes its port first and removes its lock file last, so wait for the process itself.\n    for i in $(seq 1 60); do mongod_running || break; sleep 1; done\n    mongod_running && echo 'WARNING: MongoDB did not exit within 60s, restarting the Wine server anyway'\n    echo 'Restarting the Wine server'\n    \"$WINESERVER\" -k 2>/dev/null\n    \"$WINESERVER\" -w 2>/dev/null\n    mkdir -p \"$DATA\"\n    # A non-empty lock with no journal files means a clean shutdown was cut off after its final commit\n    # and journal cleanup, so the data files are consistent and only the lock is stale. With journal\n    # files present, mongod recovers from the journal itself, so the lock is left alone.\n    if [ -s \"$DATA/mongod.lock\" ] && ! ls \"$DATA\"/journal/j._* >/dev/null 2>&1; then\n      echo 'Clearing a stale mongod.lock left by an interrupted clean shutdown'\n      : > \"$DATA/mongod.lock\"\n    fi\n    ;;\n  run)\n    exec /usr/bin/wine mongod.exe --dbpath \"Z:$DATA\" --bind_ip 127.0.0.1 --port 27017 --smallfiles --logpath \"Z:$DATA/mongod.log\" --logappend\n    ;;\n  *)\n    echo \"usage: $0 prepare|run\" >&2\n    exit 2\n    ;;\nesac\n",
         "OverwriteExistingFiles": true,
+        "SkipOnFailure": false
+    },
+    {
+        "UpdateStageName": "Prepare MongoDB",
+        "UpdateSourcePlatform": "Linux",
+        "UpdateSource": "Executable",
+        "UpdateSourceData": "/bin/bash",
+        "UpdateSourceArgs": "\"{{$FullRootDir}}mongo-start.sh\" prepare",
         "SkipOnFailure": false
     },
     {
@@ -112,7 +120,7 @@
         "UpdateSourcePlatform": "Linux",
         "UpdateSource": "Executable",
         "UpdateSourceData": "/bin/bash",
-        "UpdateSourceArgs": "\"{{$FullRootDir}}mongo-start.sh\"",
+        "UpdateSourceArgs": "\"{{$FullRootDir}}mongo-start.sh\" run",
         "RunInBackground": true,
         "SkipOnFailure": false
     },
