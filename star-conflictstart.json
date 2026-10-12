@@ -1,5 +1,14 @@
 [
     {
+        "UpdateStageName": "Write Hub Wrapper",
+        "UpdateSourcePlatform": "Linux",
+        "UpdateSource": "CreateFile",
+        "UpdateSourceArgs": "{{$FullRootDir}}hub-wrapper.sh",
+        "UpdateSourceData": "#!/bin/bash\n# Managed by AMP - regenerated on every start.\n# Runs Hub.exe under Wine and streams its log to stdout for the AMP console.\n# Hub ignores where it is told to log and always writes a dated hub_YYYY_MM_DD.log in the Wine prefix.\nLOGDIR=\"$WINEPREFIX/drive_c/users/$(id -un)/AppData/Local/Targem/StarConflict/cloud/Hub/logs\"\nmkdir -p \"$LOGDIR\"\ntoday() { echo \"$LOGDIR/hub_$(date +%Y_%m_%d).log\"; }\nF=$(today)\nOFF=$(( $(stat -c %s \"$F\" 2>/dev/null || echo 0) + 1 ))\n/usr/bin/wine Hub.exe &\nHUB=$!\ntrap 'kill -TERM $HUB 2>/dev/null' TERM INT\n(\n  while kill -0 $HUB 2>/dev/null; do\n    tail -c +$OFF -F \"$F\" 2>/dev/null &\n    T=$!\n    while kill -0 $HUB 2>/dev/null && [ \"$(today)\" = \"$F\" ]; do sleep 5; done\n    sleep 2\n    kill $T 2>/dev/null\n    F=$(today)\n    OFF=1\n  done\n) | sed -u 's/\\r$//' &\nwait $HUB\nRC=$?\nwhile kill -0 $HUB 2>/dev/null; do wait $HUB; RC=$?; done\nsleep 3\nexit $RC\n",
+        "OverwriteExistingFiles": true,
+        "SkipOnFailure": false
+    },
+    {
         "UpdateStageName": "Write Load Balancer Config",
         "UpdateSourcePlatform": "All",
         "UpdateSource": "CreateFile",

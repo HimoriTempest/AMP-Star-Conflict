@@ -19,7 +19,7 @@ Meta.ExtraSetupStepsURI=
 Meta.Prerequisites=[]
 Meta.ExtraContainerPackages=[]
 Meta.ConfigReleaseState=NotSpecified
-Meta.ConfigVersion=1.3.0
+Meta.ConfigVersion=1.3.1
 Meta.AppConfigId=82c00331-b77e-4d56-8183-25ded7b67dc8
 App.DisplayName=Star Conflict
 App.RootDir=./star-conflict/
@@ -27,7 +27,7 @@ App.BaseDirectory=./star-conflict/server/
 App.ExecutableWin=server\cloud\Hub.exe
 App.ExecutableLinux=/bin/bash
 App.WorkingDir=server/cloud
-App.LinuxCommandLineArgs=-c "LOG='{{$FullRootDir}}logs/hub.log'; mkdir -p '{{$FullRootDir}}logs' && : > $LOG; /usr/bin/wine Hub.exe -logFileName Z:$LOG & HUB=$!; trap 'kill -TERM $HUB 2>/dev/null' TERM INT; tail -n +1 -F --pid=$HUB $LOG 2>/dev/null | sed -u 's/\r$//' & wait $HUB; RC=$?; while kill -0 $HUB 2>/dev/null; do wait $HUB; RC=$?; done; sleep 1; exit $RC"
+App.LinuxCommandLineArgs="{{$FullRootDir}}hub-wrapper.sh"
 App.WindowsCommandLineArgs=
 App.CommandLineArgs={{$PlatformArgs}}
 App.UseLinuxIOREDIR=False

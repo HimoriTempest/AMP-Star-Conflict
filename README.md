@@ -2,7 +2,7 @@
 
 Hosts the self-contained Star Conflict server stack in CubeCoders AMP.
 
-The server files come from [`star-conflict-server.tar.gz`](https://nx.himori.dev/public.php/dav/files/wyxJddcXopyeJDW). It contains `cloud/` (with the bundled MongoDB 2.6.12 in `cloud/mongodb/`), `data/gamedata/`, `data/levels/` (map/nav/scene data, no textures) and `sys_data/`. The archive is extracted to `star-conflict/server/`.
+The server files come from [`star-conflict-server.tar.gz`](https://nx.himori.dev/public.php/dav/files/wyxJddcXopyeJDW). It contains `cloud/` (with the bundled MongoDB 2.6.12 in `cloud/mongodb/`), all of `data/` (including every `.pak` archive) and `sys_data/`, about 12 GB. The archive is extracted to `star-conflict/server/`.
 
 - `Hub.exe` is the supervisor. It reads `cloud/data/cloud.xml` and spawns about 17 services: LoadBalancer, Shard, MatchMaker, Chat, Universe, ZoneCoordinator and others.
 - `ZoneCoordinator` spawns one `DedicatedServer.exe` per battle.
@@ -16,7 +16,7 @@ All binaries are Windows-only (Hub and services are 32-bit, mongod is 64-bit). O
 
 | File | Purpose |
 |---|---|
-| `star-conflict.kvp` | Main template. On Linux, a small bash wrapper runs `wine Hub.exe -logFileName star-conflict/logs/hub.log` from `server/cloud`. It streams that log into the AMP console and forwards stop signals to Hub. |
+| `star-conflict.kvp` | Main template. On Linux it runs `star-conflict/hub-wrapper.sh` (written by a start stage), which starts `wine Hub.exe` from `server/cloud`, streams Hub's log into the AMP console and forwards stop signals to Hub. |
 | `star-conflictupdates.json` | Downloads and extracts the server tarball, creates `mongo-data/`, initialises the Wine prefix. |
 | `star-conflictstart.json` | Pre-start: writes `cloud/data/*_local.cfg` from AMP settings, starts mongod in the background, waits for port 27017 before Hub launches. |
 | `star-conflictports.json` | Ports exposed to players. |
@@ -55,7 +55,7 @@ networking.firewall = {
 1. Push this repo to GitHub (`HimoriTempest/AMP-Star-Conflict`, per `manifest.json`).
 2. In ADS go to **Configuration → Instance Deployment → Configuration Repositories** and add `HimoriTempest/AMP-Star-Conflict:main`. Then click **Fetch latest**.
 3. Create an instance, choose *Generic*, then *Star Conflict*, with containers enabled.
-4. Update the instance. This downloads the server tarball (about 250 MB). No Steam login is needed.
+4. Update the instance. This downloads the server tarball (about 12 GB). No Steam login is needed.
 5. Set **Public Address** to the host name or IP players will use, then start.
 
 ## Pointing clients at the server
@@ -102,8 +102,8 @@ Not yet tested end-to-end in AMP:
 - That battle servers pick ports from `net_gamePort` upward, and whether they use TCP or UDP. Both are forwarded.
 - How the client is pointed at a remote server (`net_masterServerAddress` format and where `user_config.cfg` is read from).
 - What happens to Hub on `SIGTERM` under Wine. Child services shut themselves down when Hub disconnects. mongod keeps running between app restarts, and the next start reuses it. It only stops when the container stops.
-- That the tarball is complete for a server-only install. It leaves out the client `.pak` archives, `data/ui` and all `data/levels` textures. `DedicatedServer.exe` references `levels/*.map`, `scene.xml` and `pathfinding.nav`, which are included.
-- The instance is marked Ready when Hub logs that the load balancer registered (`registered itself as 810000000000001`). If that service ID changes, AMP will stay on "Starting" while the server works fine. Adjust `Console.AppReadyRegex` if that happens. Hub writes to a Windows console, not stdout, so its log reaches AMP only through `star-conflict/logs/hub.log`. Each service still writes its own log to `.wine/drive_c/users/*/AppData/Local/Targem/StarConflict/cloud/Hub/logs/`.
+- Which `.pak` archives the server really needs. Services load scripts such as `scripts/ai/adventure_server.lua` and `scripts/scripts_server/main.lua` from inside them (their file index is obfuscated), so the tarball ships all of `data/`. A slimmer tarball without the paks made ScriptsServer and AdventureServer fail.
+- The instance is marked Ready when Hub logs that the load balancer registered (`registered itself as 810000000000001`). If that service ID changes, AMP will stay on "Starting" while the server works fine. Adjust `Console.AppReadyRegex` if that happens. Hub ignores `-logFileName` for its location and always writes `hub_YYYY_MM_DD.log` under `.wine/drive_c/users/<user>/AppData/Local/Targem/StarConflict/cloud/Hub/logs/`. The wrapper follows that file. The other services log to the same folder.
 
 ## Rebuilding the server tarball
 
@@ -114,8 +114,7 @@ cd "$HOME/.local/share/Steam/steamapps/common/star conflict"
 tar --sort=name --owner=0 --group=0 --numeric-owner \
   --exclude='./cloud/Exceptions' --exclude='./cloud/mongodb/data/*' --exclude='*_local.cfg' \
   --exclude='./cloud/mongodb/'{bsondump,mongoexport,mongofiles,mongoimport,mongooplog,mongoperf,mongos,mongostat,mongotop}.exe \
-  --exclude='./data/levels/*.dds' --exclude='./data/levels/**/*.dds' \
-  -czf star-conflict-server.tar.gz ./cloud ./data/gamedata ./data/levels ./sys_data
+  -czf star-conflict-server.tar.gz ./cloud ./data ./sys_data
 ```
 
 `cloud/mongodb/mongo-r2.6.12.zip` is MongoDB's source code. Keep it in the archive: MongoDB 2.6 is AGPL-3.0, and redistributing the binary requires providing the source.
