@@ -111,6 +111,7 @@ Every option is reversible. The default is the game's original value, and settin
 |---|---|---|---|
 | Starting Credits | `credits_on_start` (Shard) | 0 | Accounts created afterwards |
 | Starting Galactic Standards | `gold_on_start` (Shard) | 300 | Accounts created afterwards |
+| Starting Premium Days | `premium_on_start` = days × 86400 (Shard) | 0 | Accounts created afterwards |
 | Premium Hours Per Account Rank | `premiumTimeForAccountRank` (Shard, in seconds) | 24 | Rank-ups afterwards |
 | Infinite Premium For All Players | `auth_infinitePremiumForRoles` = `gm;support;player` (Shard) | `gm;support` | All accounts with the default `player` role |
 | XP Multiplier | `rate_exp` (MatchMaker) and `sv_expRate` (open space), all 18 ranks | 1 | Battles afterwards |
@@ -191,6 +192,7 @@ Verified against build 1.99.0.167293:
 
 Not yet tested end-to-end in AMP:
 - That default accounts have `admRole` `player`. The string sits next to `admRole` in `Shard.exe` (`user is not a player`), but no account record has been inspected. If premium does not appear, check an account document's `admRole` in MongoDB.
+- That `premium_on_start` is in seconds like `premiumTimeForAccountRank`. The vanilla comment only says "starting premium time/value". If a new account doesn't get the expected premium, check the unit.
 - That `tokenCredits` is the daily-capped currency shown in game. The name and the `sv_tokenCreditsDailyLimit` cvar suggest it.
 - That ConfigServer applies `default_platform_config.lua` cvars to MatchMaker, battle servers and the store the same way the game normally does. This is the mechanism SCPatcher relies on, but it has not been tested here.
 - The load balancer hands clients the host of the `cloud.xml` node address plus each service's port. With the default `127.0.0.1`, remote clients are told to connect to themselves (client log: `received shard address: (127.0.0.1:…)`, then error 10061). `net_overrideShardAddr`, `net_overrideChatServerAddr` and `net_overrideDedicatedServerAddr` are still written but had no visible effect, so the template also writes the node address: Public Address, or the IP binding when that is empty. Hub only starts if that address belongs to one of its own interfaces (`NetAddress::IsOfMyIface`). This works here because the AMP container shares the host network. It has not been tried with a bridged container.

@@ -202,6 +202,21 @@
         "MinValue": "0"
     },
     {
+        "DisplayName": "Starting Premium Days",
+        "Category": "Star Conflict:rocket_launch",
+        "Subcategory": "Accounts:person:3",
+        "Description": "Days of premium a newly created account starts with (premium_on_start, vanilla 0). Only affects accounts created after the change. Edits: star-conflict/server/cloud/data/default_platform_config.lua (AMP block at the end of the file).",
+        "Keywords": "premium,license,start,new,account,days",
+        "FieldName": "StartingPremiumDays",
+        "InputType": "number",
+        "IsFlagArgument": false,
+        "ParamFieldName": "StartingPremiumDays",
+        "IncludeInCommandLine": false,
+        "DefaultValue": "0",
+        "EnumValues": {},
+        "MinValue": "0"
+    },
+    {
         "DisplayName": "Premium Hours Per Account Rank",
         "Category": "Star Conflict:rocket_launch",
         "Subcategory": "Accounts:person:3",
