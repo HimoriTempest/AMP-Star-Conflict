@@ -496,5 +496,22 @@
         "DefaultValue": "https://example.com/star-conflict-server.tar.gz",
         "Placeholder": "https://example.com/star-conflict-server.tar.gz",
         "EnumValues": {}
+    },
+    {
+        "DisplayName": "DLC Packs In Shop (experimental)",
+        "Category": "Star Conflict:rocket_launch",
+        "Subcategory": "Economy:payments:5",
+        "Description": "Shows the 14 former DLC packs (Bundle_Arc_DLC_*: Soldier of Fortune, Galaxy Explorer, Elite Pilot, Corsair, Jolly Roger, Dead Man's Chest, the six Fleet Strength ships, Dogs of War, Object NY18) in the in-game shop, where they cost Galactic Standards (2100-20000 GS). The packs are hidden in the client's shop; this sets the store's IS_SHOW flag on them in store.xml (all four item flags, flags=15, since the bit values are not documented, so they may also get hot/new badges). Experimental: check the shop's bundle section after a restart. Off restores the original store.xml. Edits: star-conflict/server/cloud/data/store.xml (the 14 Bundle_Arc_DLC_* Item lines).",
+        "Keywords": "dlc,pack,bundle,shop,store,gs,gold",
+        "FieldName": "DlcPacksInShop",
+        "InputType": "checkbox",
+        "IsFlagArgument": false,
+        "ParamFieldName": "DlcPacksInShop",
+        "IncludeInCommandLine": false,
+        "DefaultValue": "false",
+        "EnumValues": {
+            "False": "false",
+            "True": "true"
+        }
     }
 ]
