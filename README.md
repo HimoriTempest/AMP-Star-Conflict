@@ -48,9 +48,28 @@ Switching from Tarball URL to SteamCMD later works the same way: the Steam files
 | 3815 | TCP | Chat | `chat_server_port` |
 | 35000–35049 | TCP+UDP | Battle servers (`DedicatedServer.exe`) | `net_gamePort` |
 
-Internal only, never forward these: Hub `3850` and MongoDB `27017` (bound to `127.0.0.1`, no auth).
+Internal only, never forward or open these to players. Each instance gets its own from AMP:
 
-**Keep the ports out of Linux's ephemeral range** (`/proc/sys/net/ipv4/ip_local_port_range`, usually 32768–60999). If ADS auto-assigns ports in that range (for example 60059–60061 and 60008+), an outgoing connection can grab one first, and that service then fails with `Failed to listen on port …`. Set them back to the defaults above in the instance's port settings.
+| Port (default) | Proto | Service | Set through |
+|---|---|---|---|
+| 3850 | TCP | Hub, which every service connects to | `hub_local.cfg` (`hub_listenTo`) and the `cloud.xml` node address |
+| 9001 | TCP | Hub's JSONP status listener | `hub_local.cfg` (`jsonp_listenPort`) |
+| 27017 | TCP | Bundled MongoDB, bound to `127.0.0.1`, no auth | `mongod --port`, and `db_mongoHosts` in the AMP block of `common_local.cfg` |
+
+### Several servers on one host
+
+AMP containers share the host's network here, so two instances clash on any port they both use. With 1.9.0 every port an instance opens comes from AMP's port allocation, so several instances can run side by side:
+
+- **Players' ports:** load balancer, shard, chat, and the battle port range.
+- **Internal ports:** Hub, Hub status and MongoDB, as in the table above.
+
+Each instance has its own Wine prefix, `mongo-data/` and server files. AMP assigns different ports to new instances. For instances created before 1.9.0, check that their Hub/Hub status/MongoDB ports differ, because both may show the defaults 3850/9001/27017. Players pick a server by its **load balancer port** on the login screen.
+
+Before 1.9.0, Hub (3850), the JSONP listener (9001) and MongoDB (27017) were fixed. The second instance to start couldn't open them, and its services could connect to the first instance's Hub and database.
+
+Not separable: two instances pointed at the **same external MongoDB** share their data. The database names come from the Wine user (`cosmosim_amp` and so on), which is `amp` in every container. Give each instance its own MongoDB server, or use the bundled one.
+
+**Keep the ports out of Linux's ephemeral range** (`/proc/sys/net/ipv4/ip_local_port_range`, usually 32768–60999). If ADS auto-assigns ports in that range (for example 60059–60061 and 60008+), an outgoing connection can grab one first, and that service then fails with `Failed to listen on port …`. Give each instance its own ports below 32768 in its port settings, for example the defaults for the first server, and 4801/4802/4815, 4850, 10001, 28017 and 36000–36049 for a second.
 
 ## Installing on a NixOS host
 
@@ -147,6 +166,7 @@ Logins and logouts only appear in the shard's log, not Hub's. `hub-wrapper.sh` f
 
 Set **MongoDB** to *External* and **External MongoDB Hosts** to the server, under the Database settings:
 
+- **Several servers:** two instances pointed at the same external MongoDB share their data (see [Several servers on one host](#several-servers-on-one-host)).
 - **Format** (the game's `db_mongoHosts`): `host:port`, or a replica set as `host1:port,host2:port,host3:port`. The game asks the servers which one is primary (`ismaster`). Options may follow after `|`, for example `|connpool=5`. The port defaults to 27017.
 - **How it's applied:** every service and every battle server executes `common.cfg`, and with it `common_local.cfg`, before connecting to the database. The template therefore writes `set db_mongoHosts "…"` there, in a block between `// >>> AMP managed` and `// <<< AMP managed`. Everything else in that file stays yours. Switching back to *Bundled* removes the block.
 - **On start:** the bundled MongoDB is not started. "Wait For External MongoDB" waits up to 60 seconds for one of the hosts to accept connections, otherwise the start is aborted. "Prepare MongoDB" still restarts the Wine server, but it only stops a *bundled* `mongod`, never whatever else answers on port 27017.

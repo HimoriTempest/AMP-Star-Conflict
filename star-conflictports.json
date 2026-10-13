@@ -38,5 +38,35 @@
         "Name": "Battle Server Ports",
         "Description": "Base port and range for DedicatedServer.exe battle instances spawned per match (net_gamePort). One port per concurrent battle.",
         "ChildPorts": null
+    },
+    {
+        "Protocol": "TCP",
+        "Port": 3850,
+        "Offset": 0,
+        "Range": 1,
+        "Ref": "HubPort",
+        "Name": "Hub Port",
+        "Description": "Hub, which the services connect to (hub_listenTo, and the node address in cloud.xml). Internal: do not forward or open it to players. Each instance needs its own, so several servers can run on one host.",
+        "ChildPorts": null
+    },
+    {
+        "Protocol": "TCP",
+        "Port": 9001,
+        "Offset": 0,
+        "Range": 1,
+        "Ref": "HubStatusPort",
+        "Name": "Hub Status Port",
+        "Description": "Hub's JSONP status listener (jsonp_listenPort). Internal: do not forward or open it to players. Each instance needs its own, so several servers can run on one host.",
+        "ChildPorts": null
+    },
+    {
+        "Protocol": "TCP",
+        "Port": 27017,
+        "Offset": 0,
+        "Range": 1,
+        "Ref": "MongoPort",
+        "Name": "MongoDB Port",
+        "Description": "The bundled MongoDB (mongod --port, db_mongoHosts). Bound to 127.0.0.1. Unused with an external MongoDB. Internal: do not forward or open it to players. Each instance needs its own, so several servers can run on one host.",
+        "ChildPorts": null
     }
 ]

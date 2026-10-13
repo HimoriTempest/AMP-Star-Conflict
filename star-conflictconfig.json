@@ -460,7 +460,7 @@
         "IsFlagArgument": false,
         "ParamFieldName": "ServerSource",
         "IncludeInCommandLine": false,
-        "DefaultValue": "url",
+        "DefaultValue": "steamcmd",
         "EnumValues": {
             "url": "Tarball URL",
             "steamcmd": "SteamCMD (Steam app 212070)"
@@ -477,7 +477,7 @@
         "IsFlagArgument": false,
         "ParamFieldName": "ServerTarballURL",
         "IncludeInCommandLine": false,
-        "DefaultValue": "https://nx.himori.dev/public.php/dav/files/wyxJddcXopyeJDW",
+        "DefaultValue": "https://example.com/star-conflict-server.tar.gz",
         "Placeholder": "https://example.com/star-conflict-server.tar.gz",
         "EnumValues": {}
     }
