@@ -10,7 +10,7 @@ The server files come from either a **server tarball** downloaded from a URL (de
 
 MongoDB data lives in `server/mongo-data/` and all game logs and crash dumps in `server/server-logs/`. Both are inside AMP's file manager root (`FileManager.BasePath=./star-conflict/server/`), so they show up in the file manager and AMP backups, and server-file updates don't touch them (neither the tarball nor the Steam files contain these folders). Up to 1.11 the data was in `star-conflict/mongo-data/` and the logs in the Wine prefix's AppData. The data is moved automatically on the first start after updating. Old logs stay where they were.
 
-All binaries are Windows-only (Hub and services are 32-bit, mongod is 64-bit). On Linux they run under Wine inside AMP's `cubecoders/ampbase:wine-stable` container.
+All binaries are Windows-only (Hub and services are 32-bit, mongod is 64-bit). The template is Linux only: they run under Wine inside AMP's `cubecoders/ampbase:wine-stable` container.
 
 ## Files
 
@@ -18,7 +18,7 @@ All binaries are Windows-only (Hub and services are 32-bit, mongod is 64-bit). O
 |---|---|
 | `star-conflict.kvp` | Main template. On Linux it runs `star-conflict/hub-wrapper.sh` (written by a start stage), which starts `wine Hub.exe` from `server/cloud`, streams Hub's log into the AMP console and forwards stop signals to Hub. |
 | `star-conflictupdates.json` | Gets the server files: either downloads and extracts the tarball from Server Tarball URL, or installs Steam app 212070 with SteamCMD and hard-links it into `server/`. It also creates `mongo-data/`, initialises the Wine prefix. |
-| `star-conflictstart.json` | Pre-start: writes the `*_local.cfg` files, the starter pack, the AMP block in `default_platform_config.lua` (via `amp-settings.sh` / `.ps1`) and the `cloud.xml` node address. Then it restarts the Wine server and MongoDB and waits for port 27017 before Hub launches. |
+| `star-conflictstart.json` | Pre-start: writes the `*_local.cfg` files, the starter pack, the AMP block in `default_platform_config.lua` (via `amp-settings.sh`) and the `cloud.xml` node address. Then it restarts the Wine server and MongoDB and waits for port 27017 before Hub launches. |
 | `star-conflictports.json` | Ports exposed to players. |
 | `star-conflictconfig.json` | AMP settings: public address, accounts (starting credits/GS, premium), economy (XP/credit multipliers, prices, bonuses), battles, matchmaking. See [Settings](#settings). |
 | `star-conflictmetaconfig.json` | Empty. Config is written by start stages. |
@@ -30,8 +30,8 @@ All binaries are Windows-only (Hub and services are 32-bit, mongod is 64-bit). O
 | | Tarball URL (default) | SteamCMD |
 |---|---|---|
 | Source | **Server Tarball URL**: a direct `.tar.gz` link with `./cloud`, `./data` and `./sys_data` at the top. For a Nextcloud share, use `https://<host>/public.php/dav/files/<token>` or append `/download` to the share link. | Steam app 212070, Windows depot, through AMP's SteamCMD |
-| Download | about 10 GB, `wget` (Linux) or `Invoke-WebRequest` (Windows), on every update | about 12 GB the first time, then only Steam's changes |
-| Lands in | extracted into `star-conflict/server/` | installed into `star-conflict/212070/`, then **hard-linked** into `star-conflict/server/` (`cp -al`; no extra disk space). Windows copies with `robocopy` instead. |
+| Download | about 10 GB, `wget`, on every update | about 12 GB the first time, then only Steam's changes |
+| Lands in | extracted into `star-conflict/server/` | installed into `star-conflict/212070/`, then **hard-linked** into `star-conflict/server/` (`cp -al`; no extra disk space). |
 | Login | none | **Steam login required.** Anonymous download is refused (`ERROR! Failed to install app '212070' (No subscription)`, tested with SteamCMD). AMP asks for username, password and Steam Guard code during the update (`App.SteamUpdateAnonymousLogin=False`). The account needs Star Conflict in its library; it's free to play, so add it once in the Steam client. A separate Steam account for the server is recommended. |
 | Version | whatever the tarball was built from | the current Steam version of the game |
 
@@ -92,9 +92,9 @@ The **bundled MongoDB** is the only internal service that can be restricted, and
 
 **Keep the ports out of Linux's ephemeral range** (`/proc/sys/net/ipv4/ip_local_port_range`, usually 32768–60999). If ADS auto-assigns ports in that range (for example 60059–60061 and 60008+), an outgoing connection can grab one first, and that service then fails with `Failed to listen on port …`. Give each instance its own ports below 32768 in its port settings, for example the defaults for the first server, and 4801/4802/4815, 4850, 10001, 28017 and 36000–36049 for a second.
 
-## Installing on a NixOS host
+## Host requirements (Docker)
 
-The Linux side needs a 64-bit Wine with WoW64/32-bit support at `/usr/bin/wine`. That doesn't exist on NixOS, so **run the instance in a container**. In ADS, when creating the instance, enable *Use Containers* (AMP needs Docker on the host).
+The template always runs in a container (`Meta.ContainerPolicy=Required`), using `cubecoders/ampbase:wine-stable`, which provides the 64-bit Wine with WoW64/32-bit support the server needs. AMP therefore needs Docker on the host. On NixOS:
 
 ```nix
 # configuration.nix
@@ -112,7 +112,7 @@ networking.firewall = {
 
 1. Push this repo to GitHub (`HimoriTempest/AMPStarConflict`, per `manifest.json`). The repository name must not contain hyphens. AMP rebuilds the template source from `<owner>-<repo>-<branch>`, and a hyphenated repo name makes upgrades fail with `source --main`.
 2. In ADS go to **Configuration → Instance Deployment → Configuration Repositories** and add `HimoriTempest/AMPStarConflict:main`. Then click **Fetch latest**.
-3. Create an instance, choose *Generic*, then *Star Conflict*, with containers enabled.
+3. Create an instance, choose *Generic*, then *Star Conflict*. AMP always creates it in a container.
 4. Pick **Server Files Source** (Updates settings), then update the instance. *Tarball URL* downloads the tarball from **Server Tarball URL** (about 10 GB, no Steam login). *SteamCMD* installs Steam app 212070 (about 12 GB) and asks for a Steam login.
 5. Set the address players connect to. By default the template uses **AMP's Advertised Connection Address** (instance settings → Network and Ports), as long as that IP is present on the host. **Public Address** overrides it. Hub only starts if the address is one of the host's own IPs. For internet players behind NAT, add the public IP to the host on a **dummy network interface** in the `amp` container (`ip link add sc-public type dummy; ip addr add <public IP>/32 dev sc-public; ip link set sc-public up`). Don't use `lo`: Hub ignores addresses on the loopback interface (`there is no my node in xml`), even though Wine lists them. Keep AMP's instance binding (`Webserver.IPBinding`) on a normal address such as the NetBird IP, because it is the last fallback, and keep forwarding the player ports as usual. The console shows the chosen address (`Cloud node address: … (source)`).
 
@@ -172,7 +172,7 @@ Bots, Kick Excessive Bots and Buy Everything come from SCPatcher (Star Conflict 
 | `common_local.cfg` | External MongoDB (AMP block only) |
 | `loadbalancer_local.cfg`, `shard_local.cfg`, `chat_server_local.cfg`, `dediserver_local.cfg` | Ports, Public Address |
 
-The scripts that write them are regenerated in `star-conflict/` on every start: `amp-settings.sh` (or `.ps1` on Windows), `mongo-start.sh` and `hub-wrapper.sh`.
+The scripts that write them are regenerated in `star-conflict/` on every start: `amp-settings.sh`, `mongo-start.sh` and `hub-wrapper.sh`.
 
 ## Player tracking
 
@@ -197,8 +197,31 @@ Set **MongoDB** to *External* and **External MongoDB Hosts** to the server, unde
 - **On start:** the bundled MongoDB is not started. "Wait For External MongoDB" waits up to 60 seconds for one of the hosts to accept connections, otherwise the start is aborted. "Prepare MongoDB" still restarts the Wine server, but it only stops a *bundled* `mongod`, never whatever else answers on port 27017.
 - **No authentication.** The game's driver has no login support (no SCRAM or MONGODB-CR in the binaries), so the external MongoDB must accept unauthenticated connections from this host. Keep it on a private network or behind a firewall.
 - **Version.** The driver is from the MongoDB 2.6 era and uses the legacy wire protocol, which MongoDB 5.1+ dropped. Use **MongoDB 4.4 or older**. Untested against an external server so far.
-- **Data is not migrated.** Database names get the Wine user as a suffix (`cosmosim_amp`, `stats_cosmosim_amp`, `achievements_amp`, `logs_amp`, `games_amp`, `delivered_amp`). Copy them with the bundled `mongodump` / `mongorestore` before switching, while the game is stopped.
+- **One MongoDB per instance.** See [Several servers on one host](#several-servers-on-one-host).
+- **Data is not migrated.** Database names get the Wine user as a suffix (`cosmosim_amp`, `stats_cosmosim_amp`, `achievements_amp`, `logs_amp`, `games_amp`, `delivered_amp`). Copy them as described below before switching.
 - The "Registered accounts" metric queries the first host of the list (reads from a secondary are allowed).
+
+### Moving the bundled database to an external MongoDB
+
+The bundled MongoDB 2.6 stores its data in the MMAPv1 format, which MongoDB 4.2+ can't read, so `mongo-data/` can't simply be copied. Dump it with the bundled tools and restore the dump instead.
+
+1. Stop the instance in AMP.
+2. In the AMP container, as the instance's user, with `WINEPREFIX` set to the instance's `star-conflict/.wine`, start the bundled MongoDB on its own and dump it (use the instance's MongoDB port if it isn't 27017):
+   ```bash
+   cd star-conflict/server/cloud/mongodb
+   wine mongod.exe --dbpath ../../mongo-data --bind_ip 127.0.0.1 --port 27017 --smallfiles &
+   wine mongodump.exe --port 27017 --out 'Z:\tmp\sc-dump'
+   wine mongo.exe --port 27017 admin --eval 'db.shutdownServer()'
+   ```
+   The dump should hold the six databases listed above.
+3. Copy the dump to a machine with the [MongoDB Database Tools](https://www.mongodb.com/docs/database-tools/) (for example the MongoDB server itself) and restore it with that `mongorestore`, not the bundled 2.6 one: the old tool creates indexes in a way MongoDB 4.2+ rejects.
+   ```bash
+   mongorestore --host <mongodb host>:27017 /tmp/sc-dump
+   ```
+   If an index fails to restore (4.4 is stricter about old index options), run it again with `--drop --noIndexRestore`.
+4. Set **MongoDB** to *External* and **External MongoDB Hosts** to the server, then start the instance.
+
+Keep `server/mongo-data/` until the instance has run fine on the external server: switching back to *Bundled* uses it again.
 
 ## Custom cvars
 
