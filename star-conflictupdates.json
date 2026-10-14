@@ -74,7 +74,7 @@
         "UpdateStageName": "MongoDB Data Directory Creation",
         "UpdateSourcePlatform": "All",
         "UpdateSource": "CreateDirectory",
-        "UpdateSourceArgs": "{{$FullRootDir}}mongo-data",
+        "UpdateSourceArgs": "{{$FullBaseDir}}mongo-data",
         "SkipOnFailure": false
     },
     {

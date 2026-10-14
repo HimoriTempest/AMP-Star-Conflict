@@ -8,7 +8,7 @@ The server files come from either a **server tarball** downloaded from a URL (de
 - `ZoneCoordinator` spawns one `DedicatedServer.exe` per battle.
 - Everything persists to MongoDB on `127.0.0.1:27017`. The services connect as soon as they start, so **MongoDB must be up before Hub starts**. The pre-start stages enforce this: they start mongod and wait until port 27017 accepts connections. If it doesn't come up within 90 seconds, the start is aborted.
 
-MongoDB data lives outside the extracted files, in `star-conflict/mongo-data/`, so it survives updates.
+MongoDB data lives in `server/mongo-data/` and all game logs and crash dumps in `server/server-logs/`. Both are inside AMP's file manager root (`FileManager.BasePath=./star-conflict/server/`), so they show up in the file manager and AMP backups, and server-file updates don't touch them (neither the tarball nor the Steam files contain these folders). Up to 1.11 the data was in `star-conflict/mongo-data/` and the logs in the Wine prefix's AppData. The data is moved automatically on the first start after updating. Old logs stay where they were.
 
 All binaries are Windows-only (Hub and services are 32-bit, mongod is 64-bit). On Linux they run under Wine inside AMP's `cubecoders/ampbase:wine-stable` container.
 
@@ -69,6 +69,27 @@ Before 1.9.0, Hub (3850), the JSONP listener (9001) and MongoDB (27017) were fix
 
 Not separable: two instances pointed at the **same external MongoDB** share their data. The database names come from the Wine user (`cosmosim_amp` and so on), which is `amp` in every container. Give each instance its own MongoDB server, or use the bundled one.
 
+### IP binding and keeping the internal ports local
+
+**The game can't listen on a chosen IP.** Every listener binds to all addresses (`0.0.0.0`):
+- `hub_listenTo`, `lb_listenTo` and `shard_listenTo` take a port only. `hub_listenTo "127.0.0.1:38999"` was read as port 127 (`Failed to listen on port 127`), and Hub didn't start.
+- ChatServer has `0.0.0.0:%u` hard-coded.
+- Battle servers only take `net_gamePort`.
+
+That's why the template keeps `Meta.AppIsMultiIPAware=False`. Marking it multi-IP aware would let AMP give two instances the same ports on different IPs, and since both would listen on all addresses, they'd clash.
+
+The **bundled MongoDB** is the only internal service that can be restricted, and it is: `--bind_ip 127.0.0.1`.
+
+**Hub and Hub status** stay reachable on every address of the host. Two things keep them private:
+1. Keep their ports **outside every forwarded range**, as in [Several servers on one host](#several-servers-on-one-host). Then nothing outside the host reaches them through port forwarding.
+2. For the host's other networks (NetBird, LAN, the Incus bridge), add a firewall rule in the `amp` container that only allows the internal ports on loopback. The services reach Hub through the node address, which is one of the host's own IPs, so that traffic goes over `lo` and is still allowed:
+   ```sh
+   # in the amp Incus container, as root (make it persistent there); ports = Hub, Hub status, MongoDB of each instance
+   nft add table inet sc_internal
+   nft add chain inet sc_internal input '{ type filter hook input priority 0; }'
+   nft add rule inet sc_internal input iifname != "lo" tcp dport '{ 10055, 10056, 10057 }' drop
+   ```
+
 **Keep the ports out of Linux's ephemeral range** (`/proc/sys/net/ipv4/ip_local_port_range`, usually 32768–60999). If ADS auto-assigns ports in that range (for example 60059–60061 and 60008+), an outgoing connection can grab one first, and that service then fails with `Failed to listen on port …`. Give each instance its own ports below 32768 in its port settings, for example the defaults for the first server, and 4801/4802/4815, 4850, 10001, 28017 and 36000–36049 for a second.
 
 ## Installing on a NixOS host
@@ -93,7 +114,7 @@ networking.firewall = {
 2. In ADS go to **Configuration → Instance Deployment → Configuration Repositories** and add `HimoriTempest/AMPStarConflict:main`. Then click **Fetch latest**.
 3. Create an instance, choose *Generic*, then *Star Conflict*, with containers enabled.
 4. Pick **Server Files Source** (Updates settings), then update the instance. *Tarball URL* downloads the tarball from **Server Tarball URL** (about 10 GB, no Steam login). *SteamCMD* installs Steam app 212070 (about 12 GB) and asks for a Steam login.
-5. Optionally set **Public Address**. If it's empty, the server advertises the application IP binding, or the instance IP binding (`Webserver.IPBinding`) when the application binding is `0.0.0.0`. Whatever is used must be an IP of one of the host's own network interfaces, such as its NetBird, Tailscale or LAN address. A DNS name or a NAT-forwarded public IP stops Hub from starting.
+5. Set the address players connect to. By default the template uses **AMP's Advertised Connection Address** (instance settings → Network and Ports), as long as that IP is present on the host. **Public Address** overrides it. Hub only starts if the address is one of the host's own IPs. For internet players behind NAT, add the public IP to the host on a **dummy network interface** in the `amp` container (`ip link add sc-public type dummy; ip addr add <public IP>/32 dev sc-public; ip link set sc-public up`). Don't use `lo`: Hub ignores addresses on the loopback interface (`there is no my node in xml`), even though Wine lists them. Keep AMP's instance binding (`Webserver.IPBinding`) on a normal address such as the NetBird IP, because it is the last fallback, and keep forwarding the player ports as usual. The console shows the chosen address (`Cloud node address: … (source)`).
 
 ## Pointing clients at the server
 
@@ -204,7 +225,7 @@ Not yet tested end-to-end in AMP:
 - The battle pass dates are written the way the config file's own comments describe, but no battle pass has been seen running in the client yet. Player tracking was tested against log lines copied from this server's shard log, not yet against live AMP.
 - Stopping works: Hub exits on `SIGTERM` and its services shut themselves down when Hub disconnects. On every start, `mongo-start.sh prepare` (a foreground stage) cleanly stops the previous MongoDB, waits for the process to exit (not just its port to close) and restarts the Wine server (`wineserver -k`). Then `mongo-start.sh run` (a background stage) starts MongoDB fresh. These must stay separate stages: in 1.3.3 the restart ran in the background stage, so "Wait For MongoDB" saw the old MongoDB, started Hub, and the Wine server restart then killed Hub. If a clean shutdown was ever cut off after its journal cleanup, leaving a non-empty `mongod.lock` with no journal files, the script clears that stale lock. With journal files present, it leaves the lock alone so MongoDB recovers from the journal. This clears services and sockets left over from the last run. A leftover socket on the chat port once stopped ChatServer from starting.
 - Which `.pak` archives the server really needs. Services load scripts such as `scripts/ai/adventure_server.lua` and `scripts/scripts_server/main.lua` from inside them (their file index is obfuscated), so the tarball ships all of `data/`. A slimmer tarball without the paks made ScriptsServer and AdventureServer fail.
-- The instance is marked Ready when Hub logs that the load balancer registered (`registered itself as 810000000000001`). If that service ID changes, AMP will stay on "Starting" while the server works fine. Adjust `Console.AppReadyRegex` if that happens. Hub ignores `-logFileName` for its location and always writes `hub_YYYY_MM_DD.log` under `.wine/drive_c/users/<user>/AppData/Local/Targem/StarConflict/cloud/Hub/logs/`. The wrapper follows that file. The other services log to the same folder.
+- The instance is marked Ready when Hub logs that the load balancer registered (`registered itself as 810000000000001`). If that service ID changes, AMP will stay on "Starting" while the server works fine. Adjust `Console.AppReadyRegex` if that happens. Hub ignores `-logFileName` for its location, but it honours `-outputDir`. The template starts it with `-outputDir server-logs/`, and Hub passes that on to every service and battle server. Logs are then in `server-logs/logs/` (`hub_YYYY_MM_DD.log`, one file per service, battle logs in a dated subfolder), crash dumps in `server-logs/cloud_exceptions/`. The wrapper follows the Hub and shard logs there.
 
 ## Rebuilding the server tarball
 
