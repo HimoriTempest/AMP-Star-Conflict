@@ -28,7 +28,7 @@ Server-file updates never touch `database/` or `server/server-logs/` (neither th
 
 Earlier layouts are moved over automatically by "Move Into Instance Folder", the first update and start stage: `star-conflict/server/` (before 2.1) and `star-conflict/database/` (2.0) are renamed into `instance/`. If both the old and the new folder hold files, the new one is used and the old one is left alone, with a warning in the console. Before 2.0 the database was MongoDB 2.6 under Wine in `server/mongo-data/` (before 1.12: `star-conflict/mongo-data/`) and SteamCMD installed into `212070/`; see [Bundled MongoDB](#bundled-mongodb) and [Server files](#server-files).
 
-The game's binaries are Windows-only (Hub and services are 32-bit). The template is Linux only: they run under Wine inside AMP's `cubecoders/ampbase:wine-stable` container. MongoDB runs natively.
+The game's binaries are Windows-only (Hub and services are 32-bit). The template always runs in AMP's `cubecoders/ampbase:wine-stable` container, where they run under Wine, on Linux and Windows hosts alike (`Meta.OS=Linux, Windows`, `Meta.ContainerPolicy=Required`). MongoDB runs natively.
 
 ## Files
 
@@ -46,7 +46,7 @@ The game's binaries are Windows-only (Hub and services are 32-bit). The template
 
 **Server Files Source** (Updates settings) decides where **Update** gets the server files:
 
-| | Tarball URL (default) | SteamCMD |
+| | Tarball URL | SteamCMD (default) |
 |---|---|---|
 | Source | **Server Tarball URL**: a direct `.tar.gz` link with `./cloud`, `./data` and `./sys_data` at the top. For a Nextcloud share, use `https://<host>/public.php/dav/files/<token>` or append `/download` to the share link. | Steam app 212070, Windows depot, through AMP's SteamCMD |
 | Download | about 10 GB, `wget`, on every update | about 12 GB the first time, then only Steam's changes |
@@ -197,10 +197,10 @@ Every option is reversible. The default is the game's original value, and settin
 | Starting Galactic Standards | `gold_on_start` (Shard) | 300 | Accounts created afterwards |
 | Starting Premium Days | `premium_on_start` = days × 24 (Shard; the game's unit is **hours**), capped at 20000 days | 0 | Accounts created afterwards |
 | Premium Hours Per Account Rank | `premiumTimeForAccountRank` (Shard, in seconds) | 24 | Rank-ups afterwards |
-| Infinite Premium For All Players | `auth_infinitePremiumForRoles` = `gm;support;player` (Shard) | `gm;support` | All accounts with the default `player` role |
+| Infinite Premium For All Players | `auth_infinitePremiumForRoles` = `gm;support;admin;moderator;player` (Shard) | `gm;support` | All accounts with the default `player` role |
 | XP Multiplier | `rate_exp` (MatchMaker) and `sv_expRate` (open space), all 18 ranks | 1 | Battles afterwards |
 | Credit Multiplier | `rate_cred` (MatchMaker), all 18 ranks | 1 | Battles afterwards |
-| First Win Of The Day XP Multiplier | `sv_dailyWin{Pve,Pvp,Coop,Brawl}ExpRewardCf` (battles, open space) | 3 | Battles afterwards |
+| First Win Of The Day XP Multiplier | `local x3fw` at the top of the file, edited in place; every `sv_dailyWin{Pve,Pvp,Coop,Brawl}ExpRewardCf` (battles, open space) and the login greeting read it | 3 | Battles afterwards |
 | Bonus GS Per Win / Per Loss | `reward_bonusGoldForWinner` / `reward_bonusGoldForLooser` (reward service) | 0 / 0 | Battles afterwards |
 | Daily Token Credit Limit | `sv_tokenCreditsDailyLimit` (Shard, reward service) | 1000 | Immediately |
 | Ship / Module / Ammo Price Multiplier | `store_vesselPriceMod` / `store_modulePriceMod` / `store_munitionPriceMod` (Shard) | 1 | Store |
@@ -213,7 +213,6 @@ Every option is reversible. The default is the game's original value, and settin
 | Buy Everything | `cvars.store_allowAllItemsForBying` line, edited in place. Buying obsolete or dev items can break an account. | 0 | Store |
 | DLC Packs In Shop (experimental) | Adds `flags="15"` to the 14 `<Item … defName="Bundle_Arc_DLC_*">` lines in `cloud/data/store.xml`, which sets the store's IS_SHOW flag (plus the other three item flags, whose bit values are undocumented). The client then shows these hidden bundles in the shop. Off removes the attribute again. | off | Shop, from the next start |
 | Destroyer Pack Items In Shop (experimental) | Removes `cantBeBought="1"` from the 8 Mk1 `<Item>` lines of the former destroyer packs' unique weapons and modules in `cloud/data/store.xml` (see below). They keep their existing GS prices (110–180) and still only fit their destroyer. Off puts the flag back, and the file is byte-identical to vanilla again. | off | Shop, from the next start |
-| DLC Portraits / Titles / Taunts / Decals Price (GS, experimental) | One shop entry per category for the cosmetic DLC-only content (71 portraits, 15 ship titles, 10 taunts, 2 Pikabu decals), carried by an existing bundle in `cloud/data/store.xml` (see below). 0 restores the original lines. | 0 (off) | Shop, from the next start |
 | Starter Pack: Credits / Galactic Standards / Token Credits | `credits` / `goldCredits` / `tokenCredits` attributes in `cloud/data/starter_pack.xml`, on top of the starting values above | 0 / 0 / 0 | Accounts created afterwards |
 | Battle Pass / Battle Pass Start / Battle Pass End | In place: `local battlePassStart`, `local battlePassEndTable` (one stage) at the top of the file, and `cvars.store_battlePassUnlockLvlBtnStart`. Off writes back the original, expired 2023 values. Dates are taken as UTC in any common format (AMP itself stores them as `10/13/2026 00:00:00`) and converted to the game's `YYYY-MM-DDThh:mm:ssZ`. An unparseable date leaves the battle pass off and logs why. In 1.5.0/1.5.1 only the ISO format was accepted, so dates entered through AMP were always rejected. | off | Shard and QuestServer, from the next start |
 
@@ -227,16 +226,7 @@ Player progress in the battle pass is stored per start time. Changing **Battle P
 
 **Former destroyer packs.** The destroyer packs (Procyon, Vigilant, Tyrant, Sirius, Emperor, Albireo) came with the ship and its unique weapon and modules. The destroyers are craftable ships here, built in the shipyard from parts that every destroyer (and, for the generic parts, every crafted ship) shares, so they can't be sold for GS on their own without also selling parts for all the others. **Destroyer Pack Items In Shop** therefore only unblocks the packs' unique items, Mk1, at the GS prices `store.xml` already has: `Weapon_DestrResonatingLaser_T5` (Vigilant's Vacuum-resonant laser), `Weapon_KineticFloatingCrit_T5`, `Module_IsotopeHarvester_T5`, `Module_ShieldHealOnEnemyDeath_T5` (Tyrant's Thermoactive weapon, Isotope Harvester, Warp stream detector), `Weapon_OmegaB_T5`, `Module_EmperorsRobe_T5` (Emperor's Omega-B launcher, Gyges emitter), `Weapon_PlasmaWebLaser_T5`, `Module_DroneField_T5` (Albireo's Fort-4 launcher, Autonomous barrier torpedo). The names were matched through each item's `required_ship` and the pack descriptions. Procyon's and Sirius's packs only had an ordinary Coilgun, and the packs' other modules are regular shop items. Not yet confirmed in the client.
 
-**DLC extras.** Apart from the 14 DLC packs, 83 more bundles in `bundles_dlc.lua` hold content that nothing else in the server data hands out: 71 pilot portraits, the ship titles and taunts of the `*_Stuff` packs (Dragonfly, Wasp, Cyning, Mjolnir, Kraken, Peregrine, Jaguar, Octopus, Caltrop, Saw One, Ronin), more taunts, and the Pikabu decals. They are hidden in the client, `cantBeBought` and priced 99999999 GS. Instead of 83 shop entries, each category becomes one: the client draws a shop entry from its own data, so an existing bundle carries the category and `store.xml` lists the whole category as its contents.
-
-| Setting | Carrier (what the shop shows) | Delivers |
-|---|---|---|
-| DLC Portraits Price | `Bundle_Avatar_117` (one portrait) | all 71 portraits |
-| DLC Titles Price | `Bundle_Mjolnir_Stuff` (the Mjolnir title) | all 15 ship titles |
-| DLC Taunts Price | `Bundle_Confessor_Stuff` (the Confessor taunt) | all 10 taunts |
-| DLC Decals Price | `Bundle_Pikabu` | the 2 Pikabu decals |
-
-A price above 0 sets the IS_SHOW flag (`flags="15"`, as for the DLC packs), removes `cantBeBought`, sets the price and rewrites the carrier's `<Bundle>` contents from the other DLC bundles. Every start first puts all 83 bundles back to vanilla, so 0 restores the file byte for byte (this also cleans up 2.6.0's per-bundle prices). Not included: bundles with boosts, premium time or random rewards, and `Bundle_Avatar_221`, whose portrait is obtainable elsewhere. All DLC ships were already buyable for GS. Untested in the client: that the carrier appears at the new price, and that buying it delivers the whole category (the server takes bundle contents from `store.xml`, the client only shows the carrier's own name, icon and preview). Adds about 10 seconds to each start.
+**DLC extras.** The portraits, ship titles, taunts and decals that only ever came with DLC (83 hidden bundles in `bundles_dlc.lua`) are not sold. Earlier versions could sell them through four carrier bundles; every start now puts all 83 back to vanilla in `store.xml`, which changes nothing on an unmodified file. Titles can still be given to a player with the [account commands](CONSOLE.md#account-commands) (`give <uid> title`). Portraits and taunts are shop items, so `give <uid> item` should work for them too, but that is untested; decals can't be given.
 
 Bots, Kick Excessive Bots and Buy Everything come from SCPatcher (Star Conflict Mod Manager) by Furebel, limited to the parts that are plain config values. Its other mods are not included because they edit game data (loot tables, quests, ore, iridium) and need `prepare_shared` to rebuild the server XML: arena queue timing, arena search fix, canister loot, enemy rarity, iridium multiplier, ore drops and quest GS rewards.
 
@@ -244,7 +234,7 @@ Bots, Kick Excessive Bots and Buy Everything come from SCPatcher (Star Conflict 
 
 | File | Settings |
 |---|---|
-| `default_platform_config.lua` | AMP block at the end: Accounts, Economy, Battles, Max Players. In place: Bots, Kick Excessive Bots, Buy Everything, Battle Pass |
+| `default_platform_config.lua` | AMP block at the end: Accounts, Economy, Battles, Max Players. In place: First Win Of The Day XP Multiplier, Bots, Kick Excessive Bots, Buy Everything, Battle Pass |
 | `starter_pack.xml` | Starter Pack |
 | `cloud.xml` | Public Address (node address) |
 | `common_local.cfg` | External MongoDB (AMP block only) |

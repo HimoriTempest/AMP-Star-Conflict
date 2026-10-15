@@ -21,7 +21,7 @@ Weapons, modules and ammunition have one row per item with a column for each gra
 
 - **Name** is the English name from the server's shop data. Many modules, missiles, portraits and taunts only have an internal name there (the game's own texts are packed inside the client); those names are written out from the internal name and shown in *italics*.
 - **Description** is built from the server's data: faction, ship class, ranks, prices, bundle contents and so on. The game's own description texts aren't available on the server.
-- **"Not sold in the shop"** describes the unmodified shop. The template's settings make some of these buyable (former destroyer pack items, DLC extras); see the [README](README.md).
+- **"Not sold in the shop"** describes the unmodified shop. The template's settings make some of these buyable (DLC packs, former destroyer pack items); see the [README](README.md).
 - Items with "not sold" and no price, or with test names, are often leftovers from development or events. Giving them works, but they may not show up or work properly in the client.
 
 Generated from the game's server files (`server/cloud/data/store.xml`, `titles.xml`) and the client's definition files: 14,432 items, 343 titles.
