@@ -93,7 +93,7 @@ AMP's Generic module has pre-start stages but nothing that runs on stop: it send
 1. SIGTERM to Hub; wait until it has exited.
 2. The services and battle servers shut themselves down once Hub is gone. The wrapper waits for every game process in the Wine prefix (`wineserver -w`) for up to 30 seconds, then kills what's left (`wineserver -k`) and names it in a warning.
 3. Only now, with nothing left that could write, MongoDB is stopped (SIGTERM, clean shutdown).
-4. `[AMP] Stopped`, and the wrapper exits with Hub's exit code.
+4. The wrapper stops its own helpers (the `tail -F` log followers and the accounts loop, including their child processes), prints `[AMP] Stopped` and exits with Hub's exit code. AMP only considers the application stopped once nothing holds the console output open any more, so a single leftover `tail` would keep the instance in "Stopping" (as in 2.2.0 before this was fixed).
 
 `App.ExitTimeout` is 120 seconds, enough for the whole sequence. If AMP kills the wrapper anyway, the next start's pre-start stages clean up (step 1 of the start).
 
