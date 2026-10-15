@@ -28,7 +28,7 @@ Server-file updates never touch `database/` or `server/server-logs/` (neither th
 
 Earlier layouts are moved over automatically by "Move Into Instance Folder", the first update and start stage: `star-conflict/server/` (before 2.1) and `star-conflict/database/` (2.0) are renamed into `instance/`. If both the old and the new folder hold files, the new one is used and the old one is left alone, with a warning in the console. Before 2.0 the database was MongoDB 2.6 under Wine in `server/mongo-data/` (before 1.12: `star-conflict/mongo-data/`) and SteamCMD installed into `212070/`; see [Bundled MongoDB](#bundled-mongodb) and [Server files](#server-files).
 
-The game's binaries are Windows-only (Hub and services are 32-bit). The template is Linux only: they run under Wine inside AMP's `cubecoders/ampbase:wine-stable` container. MongoDB runs natively.
+The game's binaries are Windows-only (Hub and services are 32-bit). On Linux they run under Wine inside AMP's `cubecoders/ampbase:wine-stable` container and MongoDB runs natively. On Windows everything runs natively, see [Windows](#windows).
 
 ## Files
 
@@ -59,7 +59,7 @@ Before 2.0, SteamCMD installed into `star-conflict/212070/` and the files were h
 
 ## Bundled MongoDB
 
-The game ships MongoDB 2.6 for Windows. The template doesn't use it: it runs **MongoDB 3.4.24 for Linux** natively, everything in `instance/database/`.
+The game ships MongoDB 2.6 for Windows. On Linux the template doesn't use it: it runs **MongoDB 3.4.24 for Linux** natively, everything in `instance/database/`. On Windows it does use the bundled MongoDB 2.6, with its data in `instance/database/data`.
 
 **Why 3.4.** The game's database driver dates from the 2.6 era and relies on behaviour later versions removed: `aggregate` without a `cursor` option (3.6 rejects it; Authenticator, MatchMaker and Shard use it for stats), index creation by inserting into `system.indexes` (removed in 4.2; there is no `createIndexes` in the binaries), and the legacy wire protocol with `getLastError` (removed in 5.1). 3.4 is the newest version that does all of it. Both old-style operations were tested against 3.4.24. It brings WiredTiger, and it's MongoDB's generic Linux build, which only needs glibc, so the container needs nothing extra.
 
@@ -98,6 +98,18 @@ AMP's Generic module has pre-start stages but nothing that runs on stop: it send
 `App.ExitTimeout` is 120 seconds, enough for the whole sequence. If AMP kills the wrapper anyway, the next start's pre-start stages clean up (step 1 of the start).
 
 Tested with stand-ins for Hub and the services under Proton's Wine: a service that exited 17 seconds after Hub was waited for, one that hung was killed after 30 seconds, and MongoDB stopped last in both cases.
+
+## Windows
+
+The template also runs on Windows, natively (no Wine, no container). This part was added later and is experimental, see "Not done" and "Not tested" below.
+
+- **How it runs.** AMP starts PowerShell (by its full path, `C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe`; the bare name `powershell.exe` makes the application fail at once) with `hub-wrapper.ps1`, which a start stage writes. The wrapper starts the game's bundled MongoDB 2.6 and Hub, streams Hub's log into the console (that is what lets AMP see the Ready line), turns the shard log into the `[AMP] Player joined/left` and `[AMP] Stats:` lines described under Player tracking and Metrics, and shuts everything down on stop.
+- **Stop.** `App.ExitMethodWindows=String` types `quit` on the wrapper's stdin. The wrapper sends Ctrl+Break to Hub, which has its own hidden console (Hub ignores `/quit` on stdin and Ctrl+C), waits for the other game processes, kills stragglers after 30 seconds, then shuts MongoDB down. A stop takes about 11 seconds, mostly Hub waiting 10 seconds for its console host. Everything the wrapper starts joins a job object, so Abort or a crash leaves no process behind; MongoDB then recovers from its journal on the next start.
+- **Database names.** On a "local build" the game adds the Windows user name to `db_name`, `db_stats_name` and `db_dedicatedDbCollectionSuffix`, so a different user (the AMP service account, a restored backup, a moved instance) silently got new, empty databases. The wrapper pins them to `cosmosim_amp`, `stats_cosmosim_amp` and `_amp`, the names Linux gets, in the AMP block of `cloud/data/common_local.cfg`. Once, when `cosmosim_amp` has no accounts and another `cosmosim_<user>` database has some, the six old databases are copied into the pinned names; the old ones stay.
+- **Layout and update stages.** The same as Linux: `instance/server`, `instance/database` (the MongoDB 2.6 data is in `instance/database/data`), server tarball or SteamCMD. Instances from template versions before 2.7 are moved into `instance/` by "Move Into Instance Folder", including `server\mongo-data`.
+- **Not done.** The AMP settings (XP and credit multipliers, battle pass, shop options and the rest of the Settings table) are **not applied on Windows yet**: the Windows version of `amp-settings.sh` is missing, so the game runs with its original values.
+- **Not tested.** A real player login and logout (the Star Conflict client froze after it received the shard address on the test PC, also against the vendor's own local server, so only the load balancer, shard and chat ports were checked); the SteamCMD update with a real login after the layout change; changing a setting and restarting; External MongoDB mode on Windows (only the wait stage was run); Linux with the Windows changes in the shared files.
+- **Client.** Steam starts the client with `-launchLocalServer`; see "Pointing clients at the server" for how to stop it from starting a second Hub and MongoDB.
 
 ## Ports
 
