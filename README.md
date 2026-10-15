@@ -2,28 +2,31 @@
 
 Hosts the self-contained Star Conflict server stack in CubeCoders AMP.
 
-The server files come from either a **server tarball** downloaded from a URL (default: [`star-conflict-server.tar.gz`](https://nx.himori.dev/public.php/dav/files/wyxJddcXopyeJDW)) or **SteamCMD** (Steam app 212070). Choose with **Server Files Source** under the Updates settings; see [Server files](#server-files). The tarball contains `cloud/` (including the game's own MongoDB 2.6.12 in `cloud/mongodb/`, which the template only uses to migrate old data), all of `data/` (including every `.pak` archive) and `sys_data/`, about 12 GB. Both sources install into `star-conflict/server/`.
+The server files come from either a **server tarball** downloaded from a URL (default: [`star-conflict-server.tar.gz`](https://nx.himori.dev/public.php/dav/files/wyxJddcXopyeJDW)) or **SteamCMD** (Steam app 212070). Choose with **Server Files Source** under the Updates settings; see [Server files](#server-files). The tarball contains `cloud/` (including the game's own MongoDB 2.6.12 in `cloud/mongodb/`, which the template only uses to migrate old data), all of `data/` (including every `.pak` archive) and `sys_data/`, about 12 GB. Both sources install into `star-conflict/instance/server/`.
 
 - `Hub.exe` is the supervisor. It reads `cloud/data/cloud.xml` and spawns about 17 services: LoadBalancer, Shard, MatchMaker, Chat, Universe, ZoneCoordinator and others.
 - `ZoneCoordinator` spawns one `DedicatedServer.exe` per battle.
 - Everything persists to MongoDB on `127.0.0.1:27017`. The services connect as soon as they start, so **MongoDB must be up before Hub starts**. `hub-wrapper.sh` starts the [bundled MongoDB](#bundled-mongodb) and waits until it accepts connections before it starts Hub (up to 60 seconds, otherwise the start is aborted), and shuts it down cleanly after Hub exits.
 
-The instance folder, which is also AMP's file manager root (so everything below shows up in the file manager and AMP backups):
+The instance folder. AMP's file manager root (and what AMP backs up) is `instance/`; the Wine prefix and the generated scripts sit above it, out of the way:
 
 ```
 star-conflict/
-├── server/              game files (tarball or SteamCMD install target)
-│   ├── cloud/  data/  sys_data/
-│   └── server-logs/     all game logs and crash dumps
-├── database/            bundled MongoDB 3.4, native Linux build
-│   ├── mongodb/         binaries (downloaded on update)
-│   ├── data/            the database
-│   └── mongod.log
-├── .wine/               Wine prefix
+├── instance/                file manager root
+│   ├── server/              game files (tarball or SteamCMD install target)
+│   │   ├── cloud/  data/  sys_data/
+│   │   └── server-logs/     all game logs and crash dumps
+│   └── database/            bundled MongoDB 3.4, native Linux build
+│       ├── mongodb/         binaries (downloaded on update)
+│       ├── data/            the database
+│       └── mongod.log
+├── .wine/                   Wine prefix
 └── hub-wrapper.sh, mongodb.sh, amp-settings.sh   written by the template
 ```
 
-Server-file updates never touch `database/` or `server/server-logs/` (neither the tarball nor the Steam files contain them). Before 2.0 the file manager root was `server/`, the database was MongoDB 2.6 under Wine in `server/mongo-data/` (before 1.12: `mongo-data/`), and SteamCMD installed into `212070/`. Both are moved over automatically; see [Bundled MongoDB](#bundled-mongodb) and [Server files](#server-files).
+Server-file updates never touch `database/` or `server/server-logs/` (neither the tarball nor the Steam files contain them).
+
+Earlier layouts are moved over automatically by "Move Into Instance Folder", the first update and start stage: `star-conflict/server/` (before 2.1) and `star-conflict/database/` (2.0) are renamed into `instance/`. If both the old and the new folder hold files, the new one is used and the old one is left alone, with a warning in the console. Before 2.0 the database was MongoDB 2.6 under Wine in `server/mongo-data/` (before 1.12: `star-conflict/mongo-data/`) and SteamCMD installed into `212070/`; see [Bundled MongoDB](#bundled-mongodb) and [Server files](#server-files).
 
 The game's binaries are Windows-only (Hub and services are 32-bit). The template is Linux only: they run under Wine inside AMP's `cubecoders/ampbase:wine-stable` container. MongoDB runs natively.
 
@@ -31,7 +34,7 @@ The game's binaries are Windows-only (Hub and services are 32-bit). The template
 
 | File | Purpose |
 |---|---|
-| `star-conflict.kvp` | Main template. On Linux it runs `star-conflict/hub-wrapper.sh` (written by a start stage), which starts `wine Hub.exe` from `server/cloud`, streams Hub's log into the AMP console and forwards stop signals to Hub. |
+| `star-conflict.kvp` | Main template. On Linux it runs `star-conflict/hub-wrapper.sh` (written by a start stage), which starts `wine Hub.exe` from `instance/server/cloud`, streams Hub's log into the AMP console and forwards stop signals to Hub. |
 | `star-conflictupdates.json` | Gets the server files into `server/`: either downloads and extracts the tarball from Server Tarball URL, or installs Steam app 212070 with SteamCMD. It also installs MongoDB 3.4 into `database/` (`mongodb.sh install`) and initialises the Wine prefix. |
 | `star-conflictstart.json` | Pre-start: writes the `*_local.cfg` files, the starter pack, the AMP block in `default_platform_config.lua` (via `amp-settings.sh`) and the `cloud.xml` node address. Then `mongodb.sh prepare` stops anything left from the last run, migrates old MongoDB 2.6 data once and restarts the Wine server. |
 | `star-conflictports.json` | Ports exposed to players. |
@@ -46,23 +49,23 @@ The game's binaries are Windows-only (Hub and services are 32-bit). The template
 |---|---|---|
 | Source | **Server Tarball URL**: a direct `.tar.gz` link with `./cloud`, `./data` and `./sys_data` at the top. For a Nextcloud share, use `https://<host>/public.php/dav/files/<token>` or append `/download` to the share link. | Steam app 212070, Windows depot, through AMP's SteamCMD |
 | Download | about 10 GB, `wget`, on every update | about 12 GB the first time, then only Steam's changes |
-| Lands in | extracted into `star-conflict/server/` | installed into `star-conflict/server/` |
+| Lands in | extracted into `instance/server/` | installed into `instance/server/` |
 | Login | none | **Steam login required.** Anonymous download is refused (`ERROR! Failed to install app '212070' (No subscription)`, tested with SteamCMD). AMP asks for username, password and Steam Guard code during the update (`App.SteamUpdateAnonymousLogin=False`). The account needs Star Conflict in its library; it's free to play, so add it once in the Steam client. A separate Steam account for the server is recommended. |
 | Version | whatever the tarball was built from | the current Steam version of the game |
 
-Either way, files that exist only in `star-conflict/server/` are kept, such as `common_local.cfg` and the `*_local.cfg` files. Files from the download overwrite the template's edits (`default_platform_config.lua`, `starter_pack.xml`, `cloud.xml`, `store.xml`), and the start stages reapply those on the next start. Switching from Tarball URL to SteamCMD later works the same way: Steam installs over the extracted files.
+Either way, files that exist only in `instance/server/` are kept, such as `common_local.cfg` and the `*_local.cfg` files. Files from the download overwrite the template's edits (`default_platform_config.lua`, `starter_pack.xml`, `cloud.xml`, `store.xml`), and the start stages reapply those on the next start. Switching from Tarball URL to SteamCMD later works the same way: Steam installs over the extracted files.
 
-Before 2.0, SteamCMD installed into `star-conflict/212070/` and the files were hard-linked into `server/`. On the first SteamCMD update after upgrading, "Move Steam Install" links everything over once more, including Steam's manifest in `steamapps/` (so Steam sees `server/` as its install), and removes `212070/`.
+Before 2.0, SteamCMD installed into `star-conflict/212070/` and the files were hard-linked into `server/`. On the first SteamCMD update after upgrading, "Move Steam Install" links everything into `instance/server/` once more, including Steam's manifest in `steamapps/` (so Steam sees it as its install), and removes `212070/`.
 
 ## Bundled MongoDB
 
-The game ships MongoDB 2.6 for Windows. The template doesn't use it: it runs **MongoDB 3.4.24 for Linux** natively, everything in `star-conflict/database/`.
+The game ships MongoDB 2.6 for Windows. The template doesn't use it: it runs **MongoDB 3.4.24 for Linux** natively, everything in `instance/database/`.
 
 **Why 3.4.** The game's database driver dates from the 2.6 era and relies on behaviour later versions removed: `aggregate` without a `cursor` option (3.6 rejects it; Authenticator, MatchMaker and Shard use it for stats), index creation by inserting into `system.indexes` (removed in 4.2; there is no `createIndexes` in the binaries), and the legacy wire protocol with `getLastError` (removed in 5.1). 3.4 is the newest version that does all of it. Both old-style operations were tested against 3.4.24. It brings WiredTiger, and it's MongoDB's generic Linux build, which only needs glibc, so the container needs nothing extra.
 
 **Install.** Update runs `mongodb.sh install`: downloads `mongodb-linux-x86_64-3.4.24.tgz` from `fastdl.mongodb.org` into `database/mongodb/`, checked against MongoDB's SHA-256. Skipped when 3.4.24 is already there. `database/data/` is never touched.
 
-**Running.** `hub-wrapper.sh` starts `mongod` (`--bind_ip 127.0.0.1`, the instance's MongoDB Port, `--wiredTigerCacheSizeGB` from **MongoDB Cache Size (GB)**, default 1) before Hub and stops it with SIGTERM after Hub has exited, so a stopped instance has no running database and AMP backups of `database/data/` are consistent. If the wrapper itself gets killed, the next start's `mongodb.sh prepare` stops the left-over `mongod` (found by `database/mongod.pid`). `App.ExitTimeout` is 60 seconds, enough for Hub and MongoDB to shut down.
+**Running.** `hub-wrapper.sh` starts `mongod` (`--bind_ip 127.0.0.1`, the instance's MongoDB Port, `--wiredTigerCacheSizeGB` from **MongoDB Cache Size (GB)**, default 1) before Hub and stops it with SIGTERM after Hub has exited, so a stopped instance has no running database and AMP backups of `database/data/` are consistent. If the wrapper itself gets killed, the next start's `mongodb.sh prepare` stops the left-over `mongod` (found by `database/mongod.pid`). See [Starting and stopping](#starting-and-stopping) for the full order.
 
 **Migrating from 2.6.** On the first start after upgrading from a version before 2.0, `mongodb.sh prepare` finds the old 2.6 data (`server/mongo-data/`, or `mongo-data/` from before 1.12) and copies it into `database/data/` once:
 
@@ -76,6 +79,25 @@ The old folder is left as it is; delete it once the server runs fine. If anythin
 This was tested with the game's own `mongod.exe` 2.6 under Wine: 20,000 accounts, a unique index and a TTL index came over intact, and the game's `aggregate` returned the right result afterwards.
 
 **Check the old data before relying on it.** While testing, MongoDB 2.6 under Proton 10's Wine silently lost records as a collection grew (an index build right after 20,000 inserts `scanned 3424 total records`; reading on failed with `BSONObj size: -286331154 (0xEEEEEEEE) is invalid`). Under Proton 11 the same writes were fine. Whether AMP's `wine-stable` is affected wasn't tested. If the migration fails with that error, the 2.6 data was already damaged: the migration can't copy damaged records, and the old folder still holds what's there.
+
+## Starting and stopping
+
+AMP's Generic module has pre-start stages but nothing that runs on stop: it sends SIGTERM (`App.ExitMethod=OS_CLOSE`) and kills the process after `App.ExitTimeout`. So `hub-wrapper.sh`, the process AMP runs, does both ends, in a fixed order.
+
+**Start:**
+1. Pre-start stages: config files, `amp-settings.sh`, the node address, then `mongodb.sh prepare` (stops a MongoDB left from a killed wrapper, migrates old 2.6 data once, restarts the Wine server, which clears services and sockets left from the last run).
+2. `hub-wrapper.sh` starts MongoDB and waits until it accepts connections.
+3. It starts Hub, which starts the services. AMP marks the instance ready when the load balancer has registered.
+
+**Stop** (SIGTERM from AMP), each step logged in the console as `[AMP] Stopping: …`:
+1. SIGTERM to Hub; wait until it has exited.
+2. The services and battle servers shut themselves down once Hub is gone. The wrapper waits for every game process in the Wine prefix (`wineserver -w`) for up to 30 seconds, then kills what's left (`wineserver -k`) and names it in a warning.
+3. Only now, with nothing left that could write, MongoDB is stopped (SIGTERM, clean shutdown).
+4. `[AMP] Stopped`, and the wrapper exits with Hub's exit code.
+
+`App.ExitTimeout` is 120 seconds, enough for the whole sequence. If AMP kills the wrapper anyway, the next start's pre-start stages clean up (step 1 of the start).
+
+Tested with stand-ins for Hub and the services under Proton's Wine: a service that exited 17 seconds after Hub was waited for, one that hung was killed after 30 seconds, and MongoDB stopped last in both cases.
 
 ## Ports
 
@@ -200,7 +222,7 @@ Player progress in the battle pass is stored per start time. Changing **Battle P
 
 Bots, Kick Excessive Bots and Buy Everything come from SCPatcher (Star Conflict Mod Manager) by Furebel, limited to the parts that are plain config values. Its other mods are not included because they edit game data (loot tables, quests, ore, iridium) and need `prepare_shared` to rebuild the server XML: arena queue timing, arena search fix, canister loot, enemy rarity, iridium multiplier, ore drops and quest GS rewards.
 
-**Where the files are.** Every setting's description in AMP ends with `Edits: …`, the path as AMP's file manager shows it. All of them are in `star-conflict/server/cloud/data/`:
+**Where the files are.** Every setting's description in AMP ends with `Edits: …`, the path as AMP's file manager shows it. All of them are in `instance/server/cloud/data/`:
 
 | File | Settings |
 |---|---|
@@ -271,7 +293,7 @@ Not yet tested end-to-end in AMP:
 - That battle servers pick ports from `net_gamePort` upward, and whether they use TCP or UDP. Both are forwarded.
 - The XP/credit multipliers, price multipliers, AFK time and resurrection cost were written from the cvar descriptions in `default_platform_config.lua` and haven't been observed in a match yet. Starting credits/GS and Infinite Premium use the values the server demonstrably reads: a new account got exactly `gold_on_start` 300 and `credits_on_start` 0.
 - The battle pass dates are written the way the config file's own comments describe, but no battle pass has been seen running in the client yet. Player tracking was tested against log lines copied from this server's shard log, not yet against live AMP.
-- Stopping works: Hub exits on `SIGTERM` and its services shut themselves down when Hub disconnects; `hub-wrapper.sh` then stops MongoDB (tested with a stand-in for Hub: SIGTERM to the wrapper, MongoDB shut down with code 0). On every start, `mongodb.sh prepare` stops a MongoDB left from a killed wrapper and restarts the Wine server (`wineserver -k`), which clears services and sockets left over from the last run. A leftover socket on the chat port once stopped ChatServer from starting.
+- Stopping works: Hub exits on `SIGTERM` and its services shut themselves down when Hub disconnects. The order around it is in [Starting and stopping](#starting-and-stopping); it was tested with stand-ins, not yet with the real services, so how long they take to exit is not known yet. A leftover socket on the chat port once stopped ChatServer from starting, which the Wine server restart on every start prevents.
 - Hub and its services against MongoDB 3.4 in a real game session. The two old-style operations the driver needs were tested against 3.4.24, but a full session hasn't been played on it yet.
 - Which `.pak` archives the server really needs. Services load scripts such as `scripts/ai/adventure_server.lua` and `scripts/scripts_server/main.lua` from inside them (their file index is obfuscated), so the tarball ships all of `data/`. A slimmer tarball without the paks made ScriptsServer and AdventureServer fail.
 - The instance is marked Ready when Hub logs that the load balancer registered (`registered itself as 810000000000001`). If that service ID changes, AMP will stay on "Starting" while the server works fine. Adjust `Console.AppReadyRegex` if that happens. Hub ignores `-logFileName` for its location, but it honours `-outputDir`. The template starts it with `-outputDir server-logs/`, and Hub passes that on to every service and battle server. Logs are then in `server-logs/logs/` (`hub_YYYY_MM_DD.log`, one file per service, battle logs in a dated subfolder), crash dumps in `server-logs/cloud_exceptions/`. The wrapper follows the Hub and shard logs there.
