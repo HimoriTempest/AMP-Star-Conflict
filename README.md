@@ -259,8 +259,10 @@ So the whole server is reported as custom metrics instead. Once a minute `hub-wr
 | Tile | Source |
 |---|---|
 | **Registered Accounts** | `db.accounts.count()` in `cosmosim_<user>`, queried every 5 minutes (the last value is repeated in between). AMP shows custom metrics as "value / highest so far". |
-| **Server CPU** | The container's cgroup (`cpu.stat`, `usage_usec`): CPU time of every process of the instance over the last minute, in % of all cores (0–100, like AMP's own tile). |
+| **Server CPU Percent** | The container's cgroup (`cpu.stat`, `usage_usec`): CPU time of every process of the instance over the last minute, in % of all cores (0–100, like AMP's own tile). |
 | **Server Memory MB** | The container's cgroup: `memory.current` minus `inactive_file`, the same figure `docker stats` shows. Reclaimable file cache (MongoDB's data files, the game's `.pak` files) doesn't count. |
+
+**Scales.** AMP shows custom metrics as "value / highest value seen", because a template can't give them a maximum. So the very first stats line reports CPU at 100% and memory at the limit (the container's `memory.max`, which is AMP's memory limit for the instance, or the host's RAM if there is none), and the real reading follows in the same instant. From then on Server CPU Percent reads against 100 and Server Memory MB against the limit. That one priming line shows up once per start in the console and in AMP's metric history.
 
 Every process of the instance runs in its container, so the cgroup totals cover Hub, all services, battle servers, MongoDB and Wine's helpers. Without cgroup v2 files, the console says so once and the figures are summed over the container's processes instead (`/proc/*/stat`, `ps` RSS). The first line comes about a minute after the start.
 
