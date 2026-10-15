@@ -115,13 +115,15 @@ Internal only, never forward or open these to players. Each instance gets its ow
 | 3850 | TCP | Hub, which every service connects to | `hub_local.cfg` (`hub_listenTo`) and the `cloud.xml` node address |
 | 9001 | TCP | Hub's JSONP status listener | `hub_local.cfg` (`jsonp_listenPort`) |
 | 27017 | TCP | Bundled MongoDB 3.4, bound to `127.0.0.1`, no auth | `mongod --port`, and `db_mongoHosts` in the AMP block of `common_local.cfg` |
+| 3851 | TCP | Hub remote console (SSH), only with a Remote Console Password | `hub_local.cfg` (`ssh_port`) |
+| 3852 | TCP | Shard remote console (SSH), only with a Remote Console Password | `shard_local.cfg` (`ssh_port`) |
 
 ### Several servers on one host
 
 AMP containers share the host's network here, so two instances clash on any port they both use. With 1.9.0 every port an instance opens comes from AMP's port allocation, so several instances can run side by side:
 
 - **Players' ports:** load balancer, shard, chat, and the battle port range.
-- **Internal ports:** Hub, Hub status and MongoDB, as in the table above.
+- **Internal ports:** Hub, Hub status, MongoDB and the two console ports, as in the table above.
 
 Each instance has its own Wine prefix, `database/` and server files. AMP assigns different ports to new instances. For instances created before 1.9.0, check that their Hub/Hub status/MongoDB ports differ, because both may show the defaults 3850/9001/27017. Players pick a server by its **load balancer port** on the login screen.
 
@@ -144,10 +146,10 @@ The **bundled MongoDB** is the only internal service that can be restricted, and
 1. Keep their ports **outside every forwarded range**, as in [Several servers on one host](#several-servers-on-one-host). Then nothing outside the host reaches them through port forwarding.
 2. For the host's other networks (NetBird, LAN, the Incus bridge), add a firewall rule in the `amp` container that only allows the internal ports on loopback. The services reach Hub through the node address, which is one of the host's own IPs, so that traffic goes over `lo` and is still allowed:
    ```sh
-   # in the amp Incus container, as root (make it persistent there); ports = Hub, Hub status, MongoDB of each instance
+   # in the amp Incus container, as root (make it persistent there); ports = Hub, Hub status, MongoDB and the console ports of each instance
    nft add table inet sc_internal
    nft add chain inet sc_internal input '{ type filter hook input priority 0; }'
-   nft add rule inet sc_internal input iifname != "lo" tcp dport '{ 10055, 10056, 10057 }' drop
+   nft add rule inet sc_internal input iifname != "lo" tcp dport '{ 10055, 10056, 10057, 10058, 10059 }' drop
    ```
 
 **Keep the ports out of Linux's ephemeral range** (`/proc/sys/net/ipv4/ip_local_port_range`, usually 32768–60999). If ADS auto-assigns ports in that range (for example 60059–60061 and 60008+), an outgoing connection can grab one first, and that service then fails with `Failed to listen on port …`. Give each instance its own ports below 32768 in its port settings, for example the defaults for the first server, and 4801/4802/4815, 4850, 10001, 28017 and 36000–36049 for a second.
@@ -210,7 +212,7 @@ Every option is reversible. The default is the game's original value, and settin
 | Buy Everything | `cvars.store_allowAllItemsForBying` line, edited in place. Buying obsolete or dev items can break an account. | 0 | Store |
 | DLC Packs In Shop (experimental) | Adds `flags="15"` to the 14 `<Item … defName="Bundle_Arc_DLC_*">` lines in `cloud/data/store.xml`, which sets the store's IS_SHOW flag (plus the other three item flags, whose bit values are undocumented). The client then shows these hidden bundles in the shop. Off removes the attribute again. | off | Shop, from the next start |
 | Destroyer Pack Items In Shop (experimental) | Removes `cantBeBought="1"` from the 8 Mk1 `<Item>` lines of the former destroyer packs' unique weapons and modules in `cloud/data/store.xml` (see below). They keep their existing GS prices (110–180) and still only fit their destroyer. Off puts the flag back, and the file is byte-identical to vanilla again. | off | Shop, from the next start |
-| DLC Extras Price (GS, experimental) | The 83 cosmetic DLC-only bundles (portraits, ship titles and taunts, Pikabu decals) in `cloud/data/store.xml`: `flags="15"`, no `cantBeBought`, this GS price (see below). 0 restores the original lines. | 0 (off) | Shop, from the next start |
+| DLC Portraits / Titles / Taunts / Decals Price (GS, experimental) | One shop entry per category for the cosmetic DLC-only content (71 portraits, 15 ship titles, 10 taunts, 2 Pikabu decals), carried by an existing bundle in `cloud/data/store.xml` (see below). 0 restores the original lines. | 0 (off) | Shop, from the next start |
 | Starter Pack: Credits / Galactic Standards / Token Credits | `credits` / `goldCredits` / `tokenCredits` attributes in `cloud/data/starter_pack.xml`, on top of the starting values above | 0 / 0 / 0 | Accounts created afterwards |
 | Battle Pass / Battle Pass Start / Battle Pass End | In place: `local battlePassStart`, `local battlePassEndTable` (one stage) at the top of the file, and `cvars.store_battlePassUnlockLvlBtnStart`. Off writes back the original, expired 2023 values. Dates are taken as UTC in any common format (AMP itself stores them as `10/13/2026 00:00:00`) and converted to the game's `YYYY-MM-DDThh:mm:ssZ`. An unparseable date leaves the battle pass off and logs why. In 1.5.0/1.5.1 only the ISO format was accepted, so dates entered through AMP were always rejected. | off | Shard and QuestServer, from the next start |
 
@@ -224,7 +226,16 @@ Player progress in the battle pass is stored per start time. Changing **Battle P
 
 **Former destroyer packs.** The destroyer packs (Procyon, Vigilant, Tyrant, Sirius, Emperor, Albireo) came with the ship and its unique weapon and modules. The destroyers are craftable ships here, built in the shipyard from parts that every destroyer (and, for the generic parts, every crafted ship) shares, so they can't be sold for GS on their own without also selling parts for all the others. **Destroyer Pack Items In Shop** therefore only unblocks the packs' unique items, Mk1, at the GS prices `store.xml` already has: `Weapon_DestrResonatingLaser_T5` (Vigilant's Vacuum-resonant laser), `Weapon_KineticFloatingCrit_T5`, `Module_IsotopeHarvester_T5`, `Module_ShieldHealOnEnemyDeath_T5` (Tyrant's Thermoactive weapon, Isotope Harvester, Warp stream detector), `Weapon_OmegaB_T5`, `Module_EmperorsRobe_T5` (Emperor's Omega-B launcher, Gyges emitter), `Weapon_PlasmaWebLaser_T5`, `Module_DroneField_T5` (Albireo's Fort-4 launcher, Autonomous barrier torpedo). The names were matched through each item's `required_ship` and the pack descriptions. Procyon's and Sirius's packs only had an ordinary Coilgun, and the packs' other modules are regular shop items. Not yet confirmed in the client.
 
-**DLC extras.** Apart from the 14 DLC packs, 83 more bundles in `bundles_dlc.lua` hold content that nothing else in the server data hands out: 70 pilot portraits (`Bundle_Avatar_*`), the ship titles and taunts of the `*_Stuff` packs (Dragonfly, Wasp, Cyning, Mjolnir, Kraken, Peregrine, Jaguar, Octopus, Caltrop, Saw One, Ronin) and the Pikabu decals. They are hidden in the client, `cantBeBought` and priced 99999999 GS. **DLC Extras Price** above 0 sets the IS_SHOW flag (`flags="15"`, as for the DLC packs), removes `cantBeBought` and sets that GS price on all 83; 0 restores the lines byte for byte. Not included: bundles with boosts, premium time or random rewards, and `Bundle_Avatar_221`, whose portrait is obtainable elsewhere. All DLC ships were already buyable for GS. The client's own copy still says 99999999 GS and hidden, so whether it shows and sells them is untested.
+**DLC extras.** Apart from the 14 DLC packs, 83 more bundles in `bundles_dlc.lua` hold content that nothing else in the server data hands out: 71 pilot portraits, the ship titles and taunts of the `*_Stuff` packs (Dragonfly, Wasp, Cyning, Mjolnir, Kraken, Peregrine, Jaguar, Octopus, Caltrop, Saw One, Ronin), more taunts, and the Pikabu decals. They are hidden in the client, `cantBeBought` and priced 99999999 GS. Instead of 83 shop entries, each category becomes one: the client draws a shop entry from its own data, so an existing bundle carries the category and `store.xml` lists the whole category as its contents.
+
+| Setting | Carrier (what the shop shows) | Delivers |
+|---|---|---|
+| DLC Portraits Price | `Bundle_Avatar_117` (one portrait) | all 71 portraits |
+| DLC Titles Price | `Bundle_Mjolnir_Stuff` (the Mjolnir title) | all 15 ship titles |
+| DLC Taunts Price | `Bundle_Confessor_Stuff` (the Confessor taunt) | all 10 taunts |
+| DLC Decals Price | `Bundle_Pikabu` | the 2 Pikabu decals |
+
+A price above 0 sets the IS_SHOW flag (`flags="15"`, as for the DLC packs), removes `cantBeBought`, sets the price and rewrites the carrier's `<Bundle>` contents from the other DLC bundles. Every start first puts all 83 bundles back to vanilla, so 0 restores the file byte for byte (this also cleans up 2.6.0's per-bundle prices). Not included: bundles with boosts, premium time or random rewards, and `Bundle_Avatar_221`, whose portrait is obtainable elsewhere. All DLC ships were already buyable for GS. Untested in the client: that the carrier appears at the new price, and that buying it delivers the whole category (the server takes bundle contents from `store.xml`, the client only shows the carrier's own name, icon and preview). Adds about 10 seconds to each start.
 
 Bots, Kick Excessive Bots and Buy Everything come from SCPatcher (Star Conflict Mod Manager) by Furebel, limited to the parts that are plain config values. Its other mods are not included because they edit game data (loot tables, quests, ore, iridium) and need `prepare_shared` to rebuild the server XML: arena queue timing, arena search fix, canister loot, enemy rarity, iridium multiplier, ore drops and quest GS rewards.
 
@@ -239,6 +250,29 @@ Bots, Kick Excessive Bots and Buy Everything come from SCPatcher (Star Conflict 
 | `loadbalancer_local.cfg`, `shard_local.cfg`, `chat_server_local.cfg`, `dediserver_local.cfg` | Ports, Public Address |
 
 The scripts that write them are regenerated in `star-conflict/` on every start: `amp-settings.sh`, `mongodb.sh` (also on every update) and `hub-wrapper.sh`. Before 2.0 there was a `mongo-start.sh`; it isn't used any more.
+
+## Admin and moderator roles
+
+**Admin Account IDs** and **Moderator Account IDs** (Administration settings) give accounts a role, by account ID (uid): the number in the console's `[AMP] Player joined: name (uid N)` lines. An account exists after its first login.
+
+| Role | Can |
+|---|---|
+| Admin | Everything the server knows: the Punish menu (mute/ban), GM tools (`gmView`: player info, renaming), destructive edits (`adminEdit`: resetting stats and accounts), every admin task, logging in during maintenance. |
+| Moderator | Mute and ban, temporary and permanent, and lifting them; logging in during maintenance; observing games. No GM tools. |
+
+In game, a moderator or admin right-clicks a player in chat and gets **Punish** next to Report: the report window with Mute and Ban buttons, a duration and the rule points.
+
+How it works, worked out against a running server here: an account's role is its `admRole` field (`player` by default). What a role may do is one document in a separate database, `web_adm.admRoles`: `{ roles: { <role>: { <privilege>: true, ... } } }`. Privileges are the admin task names (`mute`, `ban`, `playerInfo`, ... 61 of them) plus general ones; tested: `gmView` covers `playerInfo` and `changeNickName`, `adminEdit` covers `resetStats`, `mute` only `mute`. Shard reads the roles once at startup, so `hub-wrapper.sh` runs `mongodb.sh roles` after MongoDB is up and before Hub: it writes the `admin` and `moderator` roles and sets `admRole` on the listed accounts. Accounts that are no longer listed become `player` again; other roles (for example a `gm` set by hand) are left alone. Changes therefore take effect on the next start. With Infinite Premium on, admins and moderators get it too (`auth_infinitePremiumForRoles`).
+
+Not tested yet: the Punish menu in the client (the client checks its own privilege numbers, which aren't readable; mute and ban were verified server-side by running the admin tasks as admin and moderator accounts).
+
+## Remote console
+
+Every service has an SSH server built in. With a **Remote Console Password** (Administration settings), the template switches it on for Hub and Shard, on their own internal ports (Hub Console Port, Shard Console Port), with an RSA host key it creates once in `star-conflict/ssh_host_rsa_key`. AMP's console then becomes the game's console: type a command to run it on Hub, or put `shard ` in front to run it on Shard. Useful on Hub: `help <command>`, `cmdList`, `cvarList`, `cloud_status` (every service with load and pid), `hub_status`, `uptime`, `enterMaintenanceMode [minutes]` / `leaveMaintenanceMode`, `cron_addCmd <dow> <hours> <minutes> <cmd>`, `set <cvar> <value>`; on Shard: `shard sm_dumpClients` (connected players), `shard store_dump`, `shard cvarList`. Empty password = off (vanilla).
+
+The SSH server is old and fragile, which the console works around: it only speaks `diffie-hellman-group1-sha1`, `ssh-rsa`, `aes128-cbc` and `hmac-sha1` (the client re-enables them), handles one session at a time and wedges for good if a client gives up before it answers (so no timeouts, one command at a time, Shard only once it has finished starting), its key exchange fails now and then, sometimes it ends a session before running the command, and its reply over SSH is often empty. Every command it runs is logged with its output, though, so the console checks the service's log: a command is sent again until it shows up there (up to 5 times), Hub's output appears through the Hub log stream, and Shard's is read from its log and printed with `[Shard]`. Tested here: 30 commands, each run exactly once, every reply complete; a command takes a few seconds.
+
+Needs `ssh` and `ssh-keygen` in the container (`Meta.ExtraContainerPackages=["openssh-client"]`; an existing container may need recreating to get it). Keep the console ports internal: anything that opens a connection and leaves (a port scanner) can block the console until the next start. The password is stored in `hub_local.cfg`/`shard_local.cfg`, and failed logins are logged with the password that was tried. No quotes or backslashes in the password.
 
 ## Player tracking
 
@@ -262,14 +296,14 @@ So the whole server is reported as custom metrics instead. Once a minute `hub-wr
 | Tile | Source |
 |---|---|
 | **Registered Accounts** | `db.accounts.count()` in `cosmosim_<user>`, queried every 5 minutes (the last value is repeated in between). AMP shows custom metrics as "value / highest so far". |
-| **Server CPU Percent** | The container's cgroup (`cpu.stat`, `usage_usec`): CPU time of every process of the instance over the last minute, in % of all cores (0–100, like AMP's own tile). |
-| **Server Memory MB** | The container's cgroup: `memory.current` minus `inactive_file`, the same figure `docker stats` shows. Reclaimable file cache (MongoDB's data files, the game's `.pak` files) doesn't count. |
+| **Total CPU Usage** | The container's cgroup (`cpu.stat`, `usage_usec`): CPU time of every process of the instance over the last minute, in % of all cores (0–100, like AMP's own tile). |
+| **Total Memory Usage** | The container's cgroup: `memory.current` minus `inactive_file`, the same figure `docker stats` shows. Reclaimable file cache (MongoDB's data files, the game's `.pak` files) doesn't count. |
 
-**Scales.** AMP shows custom metrics as "value / highest value seen", because a template can't give them a maximum. So the very first stats line reports CPU at 100% and memory at the limit (the container's `memory.max`, which is AMP's memory limit for the instance, or the host's RAM if there is none), and the real reading follows in the same instant. From then on Server CPU Percent reads against 100 and Server Memory MB against the limit. That one priming line shows up once per start in the console and in AMP's metric history.
+**Scales.** AMP shows custom metrics as "value / highest value seen", because a template can't give them a maximum. So the very first stats line reports CPU at 100% and memory at the limit (the container's `memory.max`, which is AMP's memory limit for the instance, or the host's RAM if there is none), and the real reading follows in the same instant. From then on Total CPU Usage reads against 100 and Total Memory Usage against the limit. That one priming line shows up once per start in the console and in AMP's metric history.
 
 Every process of the instance runs in its container, so the cgroup totals cover Hub, all services, battle servers, MongoDB and Wine's helpers. Without cgroup v2 files, the console says so once and the figures are summed over the container's processes instead (`/proc/*/stat`, `ps` RSS). The first line comes about a minute after the start.
 
-Tested outside AMP in a separate cgroup: one busy core of 8 read as 12.0% (the busy process's own CPU time gave the same 0.96 cores), and a process holding 300 MB raised Server Memory from 2 to 315 MB and back. Not yet confirmed: that AMP turns the three named groups of one regex into three tiles, since the official templates only ever use one.
+Tested outside AMP in a separate cgroup: one busy core of 8 read as 12.0% (the busy process's own CPU time gave the same 0.96 cores), and a process holding 300 MB raised Total Memory Usage from 2 to 315 MB and back. Not yet confirmed: that AMP turns the three named groups of one regex into three tiles, since the official templates only ever use one.
 
 ## External MongoDB
 

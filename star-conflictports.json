@@ -61,6 +61,26 @@
     },
     {
         "Protocol": "TCP",
+        "Port": 3851,
+        "Offset": 0,
+        "Range": 1,
+        "Ref": "HubConsolePort",
+        "Name": "Hub Console Port",
+        "Description": "Hub's remote console (SSH, ssh_port), only open with a Remote Console Password. Internal: do not forward or open it to players; it handles one session at a time and stray connections can block it. Each instance needs its own.",
+        "ChildPorts": null
+    },
+    {
+        "Protocol": "TCP",
+        "Port": 3852,
+        "Offset": 0,
+        "Range": 1,
+        "Ref": "ShardConsolePort",
+        "Name": "Shard Console Port",
+        "Description": "Shard's remote console (SSH, ssh_port), only open with a Remote Console Password. Internal: do not forward or open it to players. Each instance needs its own.",
+        "ChildPorts": null
+    },
+    {
+        "Protocol": "TCP",
         "Port": 27017,
         "Offset": 0,
         "Range": 1,
