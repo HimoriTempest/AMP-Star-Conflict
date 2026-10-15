@@ -209,6 +209,7 @@ Every option is reversible. The default is the game's original value, and settin
 | Coop vs AI Team Size (experimental) | `botsCount = 2N-1, botsInTeam1 = N-1` added to the three `coop_vs_ai = 1` special entries (both coop templates and the newbie coop queue), edited in place. Sized for one player: N-1 allies, N enemies. Capped at 8 ships in the newbie coop queue, 12 otherwise. Not yet confirmed that the matchmaker uses them; check `botsCount`/`botsInTeam1` in the battle log. | 0 (off) | Coop matchmaking |
 | Buy Everything | `cvars.store_allowAllItemsForBying` line, edited in place. Buying obsolete or dev items can break an account. | 0 | Store |
 | DLC Packs In Shop (experimental) | Adds `flags="15"` to the 14 `<Item … defName="Bundle_Arc_DLC_*">` lines in `cloud/data/store.xml`, which sets the store's IS_SHOW flag (plus the other three item flags, whose bit values are undocumented). The client then shows these hidden bundles in the shop. Off removes the attribute again. | off | Shop, from the next start |
+| Destroyer Pack Items In Shop (experimental) | Removes `cantBeBought="1"` from the 8 Mk1 `<Item>` lines of the former destroyer packs' unique weapons and modules in `cloud/data/store.xml` (see below). They keep their existing GS prices (110–180) and still only fit their destroyer. Off puts the flag back, and the file is byte-identical to vanilla again. | off | Shop, from the next start |
 | Starter Pack: Credits / Galactic Standards / Token Credits | `credits` / `goldCredits` / `tokenCredits` attributes in `cloud/data/starter_pack.xml`, on top of the starting values above | 0 / 0 / 0 | Accounts created afterwards |
 | Battle Pass / Battle Pass Start / Battle Pass End | In place: `local battlePassStart`, `local battlePassEndTable` (one stage) at the top of the file, and `cvars.store_battlePassUnlockLvlBtnStart`. Off writes back the original, expired 2023 values. Dates are taken as UTC in any common format (AMP itself stores them as `10/13/2026 00:00:00`) and converted to the game's `YYYY-MM-DDThh:mm:ssZ`. An unparseable date leaves the battle pass off and logs why. In 1.5.0/1.5.1 only the ISO format was accepted, so dates entered through AMP were always rejected. | off | Shard and QuestServer, from the next start |
 
@@ -219,6 +220,8 @@ Starting values and the starter pack are only granted when an account is created
 Player progress in the battle pass is stored per start time. Changing **Battle Pass Start** begins a new battle pass and existing progress is lost; DLC-bought premium is kept. `battle_pass.xml` defines one stage with 41 rewards, so the template runs exactly that stage.
 
 **Former DLC packs.** Steam DLC purchases can't reach a self-hosted server: ownership is checked through Steam's publisher web API, which needs the publisher's key. In the Steam client, the ship window's DLC button opens the Steam store. The 14 packs still exist as GS-priced bundles (`Bundle_Arc_DLC_*` in `data/gamedata/def/objects/bundles.lua`: ships, titles, account auras, decals, open-world paints), but they're marked `hiddenInShop`. That flag is only checked by the client, and the client still shows a bundle whose store item carries `IS_SHOW`. **DLC Packs In Shop** sets that flag. Players can earn GS for the packs without paying through Starting Galactic Standards and Bonus GS Per Win / Per Loss. Not yet confirmed in the client.
+
+**Former destroyer packs.** The destroyer packs (Procyon, Vigilant, Tyrant, Sirius, Emperor, Albireo) came with the ship and its unique weapon and modules. The destroyers are craftable ships here, built in the shipyard from parts that every destroyer (and, for the generic parts, every crafted ship) shares, so they can't be sold for GS on their own without also selling parts for all the others. **Destroyer Pack Items In Shop** therefore only unblocks the packs' unique items, Mk1, at the GS prices `store.xml` already has: `Weapon_DestrResonatingLaser_T5` (Vigilant's Vacuum-resonant laser), `Weapon_KineticFloatingCrit_T5`, `Module_IsotopeHarvester_T5`, `Module_ShieldHealOnEnemyDeath_T5` (Tyrant's Thermoactive weapon, Isotope Harvester, Warp stream detector), `Weapon_OmegaB_T5`, `Module_EmperorsRobe_T5` (Emperor's Omega-B launcher, Gyges emitter), `Weapon_PlasmaWebLaser_T5`, `Module_DroneField_T5` (Albireo's Fort-4 launcher, Autonomous barrier torpedo). The names were matched through each item's `required_ship` and the pack descriptions. Procyon's and Sirius's packs only had an ordinary Coilgun, and the packs' other modules are regular shop items. Not yet confirmed in the client.
 
 Bots, Kick Excessive Bots and Buy Everything come from SCPatcher (Star Conflict Mod Manager) by Furebel, limited to the parts that are plain config values. Its other mods are not included because they edit game data (loot tables, quests, ore, iridium) and need `prepare_shared` to rebuild the server XML: arena queue timing, arena search fix, canister loot, enemy rarity, iridium multiplier, ore drops and quest GS rewards.
 
@@ -242,10 +245,26 @@ Logins and logouts only appear in the shard's log, not Hub's. `hub-wrapper.sh` f
 [AMP] Player joined: himori (uid 1)      <- "Granting authorization ( uid 1 … nick: 'himori' )" + "logged in as 1"
 [AMP] Players online: 1
 [AMP] Player left: himori (uid 1)        <- "SessionManager::OnDisconnect, uid: 1 …"
-[AMP] Registered accounts: 7             <- db.accounts.count() in cosmosim_<user>, every 5 minutes
+[AMP] Stats: accounts 7, cpu 14.2%, memory 2310 MB   <- every minute, see Metrics below
 ```
 
-`Console.UserJoinRegex` / `UserLeaveRegex` match the first and third lines, so AMP's user list, user count and history work. `Console.MetricsRegex` turns the last line into a **Registered Accounts** metric. Connections that never log in (uid 0, such as port checks) are ignored. AMP clears its user list when the application stops.
+`Console.UserJoinRegex` / `UserLeaveRegex` match the first and third lines, so AMP's user list, user count and history work. Connections that never log in (uid 0, such as port checks) are ignored. AMP clears its user list when the application stops.
+
+## Metrics
+
+AMP's built-in **CPU Usage** and **Memory Usage** tiles measure one process: the one AMP started, `hub-wrapper.sh`, which is idle, so they show about 0. A template can point them at one other process (`App.MonitorChildProcessName`), but never at a sum, and the load here is spread over about 17 services, the battle servers and MongoDB. The memory total they show is the host's RAM.
+
+So the whole server is reported as custom metrics instead. Once a minute `hub-wrapper.sh` prints `[AMP] Stats: accounts N, cpu X%, memory Y MB`, and `Console.MetricsRegex` turns it into three tiles:
+
+| Tile | Source |
+|---|---|
+| **Registered Accounts** | `db.accounts.count()` in `cosmosim_<user>`, queried every 5 minutes (the last value is repeated in between). AMP shows custom metrics as "value / highest so far". |
+| **Server CPU** | The container's cgroup (`cpu.stat`, `usage_usec`): CPU time of every process of the instance over the last minute, in % of all cores (0–100, like AMP's own tile). |
+| **Server Memory MB** | The container's cgroup: `memory.current` minus `inactive_file`, the same figure `docker stats` shows. Reclaimable file cache (MongoDB's data files, the game's `.pak` files) doesn't count. |
+
+Every process of the instance runs in its container, so the cgroup totals cover Hub, all services, battle servers, MongoDB and Wine's helpers. Without cgroup v2 files, the console says so once and the figures are summed over the container's processes instead (`/proc/*/stat`, `ps` RSS). The first line comes about a minute after the start.
+
+Tested outside AMP in a separate cgroup: one busy core of 8 read as 12.0% (the busy process's own CPU time gave the same 0.96 cores), and a process holding 300 MB raised Server Memory from 2 to 315 MB and back. Not yet confirmed: that AMP turns the three named groups of one regex into three tiles, since the official templates only ever use one.
 
 ## External MongoDB
 

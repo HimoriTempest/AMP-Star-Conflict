@@ -528,5 +528,22 @@
             "False": "false",
             "True": "true"
         }
+    },
+    {
+        "DisplayName": "Destroyer Pack Items In Shop (experimental)",
+        "Category": "Star Conflict:rocket_launch",
+        "Subcategory": "Economy:payments:5",
+        "Description": "Makes the unique weapons and modules of the former destroyer packs buyable in the shop (Mk1, at the GS prices store.xml already has, 110-180 GS): Vigilant's Vacuum-resonant laser; Tyrant's Thermoactive weapon, Isotope Harvester and Warp stream detector; Emperor's Omega-B missile launcher and Gyges microwave emitter; Albireo's Fort-4 launcher and Autonomous barrier torpedo. The destroyers themselves are unchanged (crafted as usual), and the items still only fit their destroyer. Procyon's and Sirius's packs only had an ordinary Coilgun, and the packs' other modules are regular shop items. Experimental: check the shop after a restart. Off restores the original store.xml. Edits: server/cloud/data/store.xml (removes cantBeBought from the 8 Item lines).",
+        "Keywords": "destroyer,pack,dlc,weapon,module,shop,store,gs,vigilant,tyrant,emperor,albireo",
+        "FieldName": "DestroyerPackItemsInShop",
+        "InputType": "checkbox",
+        "IsFlagArgument": false,
+        "ParamFieldName": "DestroyerPackItemsInShop",
+        "IncludeInCommandLine": false,
+        "DefaultValue": "false",
+        "EnumValues": {
+            "False": "false",
+            "True": "true"
+        }
     }
 ]
