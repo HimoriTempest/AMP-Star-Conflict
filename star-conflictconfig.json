@@ -545,5 +545,20 @@
             "False": "false",
             "True": "true"
         }
+    },
+    {
+        "DisplayName": "DLC Extras Price (GS, experimental)",
+        "Category": "Star Conflict:rocket_launch",
+        "Subcategory": "Economy:payments:5",
+        "Description": "Puts the cosmetic content that was only ever given out through DLC into the in-game shop, at this GS price per bundle: 70 pilot portraits, the ship titles and taunts of the destroyer and premium-ship packs (Dragonfly, Wasp, Cyning, Mjolnir, Kraken, Peregrine, Jaguar, Octopus, Caltrop, Saw One, Ronin) and the Pikabu decals, 83 bundles in all. Each bundle holds one portrait, or a ship's title(s) and taunt. 0 = off (vanilla: hidden, not for sale, 99999999 GS). Experimental: the client's own data still lists these bundles as hidden and at 99999999 GS; the template sets the store's IS_SHOW flag as for the DLC packs, but whether the client shows the new price and lets players buy has not been tested yet. Edits: server/cloud/data/store.xml (the 83 bundle Item lines).",
+        "Keywords": "dlc,portrait,avatar,title,taunt,decal,cosmetic,shop,store,gs,gold",
+        "FieldName": "DlcExtrasPrice",
+        "InputType": "number",
+        "IsFlagArgument": false,
+        "ParamFieldName": "DlcExtrasPrice",
+        "IncludeInCommandLine": false,
+        "DefaultValue": "0",
+        "EnumValues": {},
+        "MinValue": "0"
     }
 ]
